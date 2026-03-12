@@ -8,7 +8,7 @@ import {
   useRef,
   useState
 } from "react";
-import { hasTelegramVerifyEndpoint } from "../config/runtime";
+import { getTelegramVerifyConfig } from "../config/runtime";
 import { createId, createUuid } from "../lib/id";
 import { getTelegramInitData, initTelegramWebApp, verifyTelegramInitData } from "../lib/telegram";
 import { hasAdminAccess } from "../security/admin-role";
@@ -96,6 +96,9 @@ const initialState = makeAppState(createFallbackBootstrap());
 
 function mapError(error: unknown): string {
   if (error instanceof Error) {
+    if (error.message.includes("FAVORITES_AUTH_REQUIRED")) {
+      return "Чтобы сохранять избранное, откройте Mini App из Telegram-аккаунта.";
+    }
     return error.message;
   }
   return "Произошла ошибка. Попробуйте ещё раз.";
@@ -165,13 +168,20 @@ export function AppProvider({ children }: PropsWithChildren) {
   }, [reload]);
 
   useEffect(() => {
-    const hasEndpoint = hasTelegramVerifyEndpoint();
+    if (repository.kind !== "supabase") {
+      setAuthVerificationStatus("idle");
+      setAuthVerificationMessage(null);
+      return;
+    }
+
+    const verifyConfig = getTelegramVerifyConfig();
     const initData = getTelegramInitData();
 
-    if (!hasEndpoint) {
+    if (verifyConfig.source === "fallback") {
       setAuthVerificationStatus("no_endpoint");
-      setAuthVerificationMessage("Server verify endpoint не задан.");
-      return;
+      setAuthVerificationMessage(
+        `VITE_TELEGRAM_AUTH_VERIFY_URL не задан, используем fallback ${verifyConfig.endpoint}.`
+      );
     }
 
     if (!initData) {
@@ -191,7 +201,9 @@ export function AppProvider({ children }: PropsWithChildren) {
           return;
         }
         setAuthVerificationStatus(result.ok ? "verified" : "failed");
-        setAuthVerificationMessage(result.message ?? null);
+        const endpointSuffix =
+          result.endpointSource === "fallback" ? " (через same-origin fallback)" : "";
+        setAuthVerificationMessage(result.message ? `${result.message}${endpointSuffix}` : null);
       } catch {
         if (!cancelled) {
           setAuthVerificationStatus("failed");
@@ -203,7 +215,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [telegramUserId]);
+  }, [repository.kind, telegramUserId]);
 
   const currentProfile =
     state.profiles.find((profile) => profile.id === state.activeProfileId) ?? state.profiles[0] ?? null;
@@ -227,7 +239,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     }
 
     if (authVerificationStatus === "no_endpoint") {
-      return "Admin-действия в Supabase mode требуют VITE_TELEGRAM_AUTH_VERIFY_URL.";
+      return "Используется fallback verify endpoint /api/telegram/verify.";
     }
 
     if (authVerificationStatus === "unavailable") {
@@ -646,7 +658,8 @@ export function AppProvider({ children }: PropsWithChildren) {
         setState((prev) => ({ ...prev, favorites: state.favorites }));
         const message = mapError(error);
         const looksLikeAuthFavoriteError =
-          message.toLowerCase().includes("supabase") && message.toLowerCase().includes("telegram");
+          message.includes("FAVORITES_AUTH_REQUIRED") ||
+          (message.toLowerCase().includes("supabase") && message.toLowerCase().includes("telegram"));
         setActionError(
           looksLikeAuthFavoriteError
             ? "Чтобы сохранять избранное, откройте Mini App из Telegram-аккаунта."

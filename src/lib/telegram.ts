@@ -1,4 +1,7 @@
-import { getTelegramVerifyEndpoint } from "../config/runtime";
+import {
+  getTelegramVerifyConfig,
+  type TelegramVerifyEndpointSource
+} from "../config/runtime";
 import type { TelegramWebAppUser } from "../types/telegram";
 
 export function getTelegramWebApp() {
@@ -22,15 +25,22 @@ export function getTelegramInitData(): string {
 
 export interface TelegramInitDataVerifyResult {
   ok: boolean;
+  endpoint: string;
+  endpointSource: TelegramVerifyEndpointSource;
+  statusCode?: number;
   message?: string;
 }
 
 export async function verifyTelegramInitData(initData: string): Promise<TelegramInitDataVerifyResult> {
-  const endpoint = getTelegramVerifyEndpoint();
-  if (!endpoint || !initData) {
+  const verifyConfig = getTelegramVerifyConfig();
+  const { endpoint, source } = verifyConfig;
+
+  if (!initData) {
     return {
       ok: false,
-      message: "Проверка Telegram auth пропущена: endpoint или initData не заданы."
+      endpoint,
+      endpointSource: source,
+      message: "Проверка Telegram auth пропущена: initData не передан."
     };
   }
 
@@ -43,28 +53,39 @@ export async function verifyTelegramInitData(initData: string): Promise<Telegram
       body: JSON.stringify({ initData })
     });
 
-    if (!response.ok) {
-      return {
-        ok: false,
-        message: `Проверка Telegram auth завершилась с HTTP ${response.status}.`
-      };
-    }
-
-    const payload = (await response.json()) as {
+    const payload = (await response.json().catch(() => ({}))) as {
       ok?: boolean;
-      valid?: boolean;
+      verified?: boolean;
       message?: string;
       error?: string;
     };
-    const isVerified = Boolean(payload.ok ?? payload.valid);
+
+    const verified = Boolean(payload.ok ?? payload.verified);
+    if (!response.ok || !verified) {
+      return {
+        ok: false,
+        endpoint,
+        endpointSource: source,
+        statusCode: response.status,
+        message:
+          payload.message ||
+          payload.error ||
+          `Проверка Telegram auth завершилась с HTTP ${response.status}.`
+      };
+    }
 
     return {
-      ok: isVerified,
-      message: payload.message || payload.error || (isVerified ? "Проверка пройдена." : "Сервер отклонил initData.")
+      ok: true,
+      endpoint,
+      endpointSource: source,
+      statusCode: response.status,
+      message: payload.message || "Проверка Telegram auth пройдена."
     };
   } catch {
     return {
       ok: false,
+      endpoint,
+      endpointSource: source,
       message: "Сервис проверки Telegram auth недоступен."
     };
   }

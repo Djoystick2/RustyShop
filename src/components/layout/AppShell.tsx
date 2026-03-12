@@ -1,5 +1,9 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { getStorageBucketName, hasTelegramVerifyEndpoint, isDefaultStorageBucket } from "../../config/runtime";
+import {
+  getStorageBucketName,
+  getTelegramVerifyConfig,
+  isDefaultStorageBucket
+} from "../../config/runtime";
 import { useAppContext } from "../../context/AppContext";
 import { DataStateBoundary } from "../common/DataStateBoundary";
 import { BottomNav } from "./BottomNav";
@@ -14,10 +18,10 @@ export function AppShell() {
     repositoryKind
   } = useAppContext();
 
-  const hasVerifyEndpoint = hasTelegramVerifyEndpoint();
+  const verifyConfig = getTelegramVerifyConfig();
   const isCustomBucket = !isDefaultStorageBucket();
   const isProfileArea = location.pathname.startsWith("/profile");
-  const isSoftActionError = Boolean(actionError?.toLowerCase().includes("избран"));
+  const isSoftActionError = Boolean(actionError?.includes("Mini App"));
 
   return (
     <div className="app-shell">
@@ -36,10 +40,10 @@ export function AppShell() {
           </section>
         ) : null}
 
-        {repositoryKind === "supabase" && isProfileArea && !hasVerifyEndpoint ? (
+        {repositoryKind === "supabase" && isProfileArea && verifyConfig.source === "fallback" ? (
           <section className="mode-banner mode-banner_compact">
-            <strong>Admin-панель:</strong>
-            <span>для runtime-доступа нужен `VITE_TELEGRAM_AUTH_VERIFY_URL`.</span>
+            <strong>Verify endpoint:</strong>
+            <span>используем same-origin fallback `{verifyConfig.endpoint}`.</span>
           </section>
         ) : null}
 
@@ -87,4 +91,3 @@ export function AppShell() {
     </div>
   );
 }
-

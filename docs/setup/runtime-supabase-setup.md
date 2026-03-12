@@ -9,8 +9,17 @@
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_STORAGE_BUCKET` (обычно `product-images`)
-- `VITE_TELEGRAM_AUTH_VERIFY_URL` (для admin flow в Supabase mode)
 - `VITE_ENABLE_LOCAL_FALLBACK`
+
+Для verify:
+
+- `VITE_TELEGRAM_AUTH_VERIFY_URL` (опционально)
+- если переменная пустая, клиент автоматически использует same-origin fallback: `/api/telegram/verify`
+
+Для serverless verify endpoint (Vercel):
+
+- `TELEGRAM_BOT_TOKEN` (обязательно)
+- `TELEGRAM_INIT_DATA_MAX_AGE_SEC` (опционально, по умолчанию `86400`)
 
 ## 2. Примените миграции
 
@@ -30,16 +39,17 @@
 
 ## 4. Проверьте Telegram verify endpoint
 
-Ожидается HTTP endpoint:
+В проекте реализован endpoint:
 
-- `POST {VITE_TELEGRAM_AUTH_VERIFY_URL}`
+- `POST /api/telegram/verify`
 - body: `{ "initData": "<raw Telegram initData>" }`
-- response: `{ "ok": true }` или `{ "ok": false, "message": "..." }`
+- response: `{ "ok": true, "verified": true, ... }` или `{ "ok": false, "error": "...", "message": "..." }`
 
-Если endpoint не задан или недоступен:
+Проверка реальная:
 
-- storefront работает;
-- admin-действия в Supabase mode блокируются предсказуемо.
+- валидация hash по `TELEGRAM_BOT_TOKEN`,
+- проверка `auth_date` freshness через `TELEGRAM_INIT_DATA_MAX_AGE_SEC`,
+- корректные HTTP-коды ошибок.
 
 ## 5. Локальный fallback
 

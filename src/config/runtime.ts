@@ -1,4 +1,5 @@
 const DEFAULT_STORAGE_BUCKET = "product-images";
+const DEFAULT_TELEGRAM_VERIFY_ENDPOINT = "/api/telegram/verify";
 
 function readEnv(name: keyof ImportMetaEnv): string {
   return import.meta.env[name]?.trim() ?? "";
@@ -9,12 +10,18 @@ function isFalseLike(value: string): boolean {
 }
 
 export type RepositoryRuntimeMode = "supabase" | "local_fallback" | "unavailable";
+export type TelegramVerifyEndpointSource = "env" | "fallback";
 
 export interface SupabaseRuntimeConfig {
   url: string;
   anonKey: string;
   isConfigured: boolean;
   missingVars: Array<"VITE_SUPABASE_URL" | "VITE_SUPABASE_ANON_KEY">;
+}
+
+export interface TelegramVerifyConfig {
+  endpoint: string;
+  source: TelegramVerifyEndpointSource;
 }
 
 export function getSupabaseRuntimeConfig(): SupabaseRuntimeConfig {
@@ -80,11 +87,26 @@ export function isDefaultStorageBucket(): boolean {
   return getStorageBucketName() === DEFAULT_STORAGE_BUCKET;
 }
 
-export function getTelegramVerifyEndpoint(): string {
-  return readEnv("VITE_TELEGRAM_AUTH_VERIFY_URL");
+export function getTelegramVerifyConfig(): TelegramVerifyConfig {
+  const explicitEndpoint = readEnv("VITE_TELEGRAM_AUTH_VERIFY_URL");
+  if (explicitEndpoint) {
+    return {
+      endpoint: explicitEndpoint,
+      source: "env"
+    };
+  }
+
+  return {
+    endpoint: DEFAULT_TELEGRAM_VERIFY_ENDPOINT,
+    source: "fallback"
+  };
 }
 
-export function hasTelegramVerifyEndpoint(): boolean {
-  return Boolean(getTelegramVerifyEndpoint());
+export function getTelegramVerifyEndpoint(): string {
+  return getTelegramVerifyConfig().endpoint;
+}
+
+export function hasExplicitTelegramVerifyEndpoint(): boolean {
+  return getTelegramVerifyConfig().source === "env";
 }
 

@@ -9,7 +9,7 @@ const authStatusLabel: Record<string, string> = {
   verifying: "проверяем",
   verified: "подтверждена",
   failed: "ошибка проверки",
-  no_endpoint: "endpoint не настроен",
+  no_endpoint: "используем fallback endpoint",
   unavailable: "initData недоступен"
 };
 
