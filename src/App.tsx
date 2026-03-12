@@ -12,14 +12,15 @@ export function App() {
   return (
     <HashRouter>
       <Routes>
-        <Route element={<AppShell />}>
+        <Route path="/" element={<AppShell />}>
           <Route index element={<FeedPage />} />
-          <Route path="/catalog" element={<CatalogPage />} />
-          <Route path="/catalog/:categoryId" element={<CategoryPage />} />
-          <Route path="/giveaway" element={<GiveawayPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/product/:productId" element={<ProductPage />} />
+          <Route path="catalog" element={<CatalogPage />} />
+          <Route path="catalog/:categoryId" element={<CategoryPage />} />
+          <Route path="giveaway" element={<GiveawayPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="product/:productId" element={<ProductPage />} />
+          <Route path="*" element={<FeedPage />} />
         </Route>
       </Routes>
     </HashRouter>

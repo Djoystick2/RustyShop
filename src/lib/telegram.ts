@@ -14,8 +14,17 @@ export function initTelegramWebApp(): TelegramWebAppUser | null {
     return null;
   }
 
-  webApp.ready();
-  webApp.expand();
+  try {
+    if (typeof webApp.ready === "function") {
+      webApp.ready();
+    }
+    if (typeof webApp.expand === "function") {
+      webApp.expand();
+    }
+  } catch {
+    // Telegram bridge errors should not break initial render.
+  }
+
   return webApp.initDataUnsafe?.user ?? null;
 }
 
@@ -100,4 +109,3 @@ export function openTelegramLink(url: string) {
 
   window.open(url, "_blank", "noopener,noreferrer");
 }
-
