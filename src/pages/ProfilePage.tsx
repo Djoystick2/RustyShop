@@ -22,6 +22,7 @@ export function ProfilePage() {
     state,
     switchProfile,
     telegramUserId,
+    telegramBridgeInfo,
     repositoryKind,
     isSaving
   } = useAppContext();
@@ -55,6 +56,17 @@ export function ProfilePage() {
             </small>
             <br />
             <small>Auth verify: {authStatusLabel[authVerificationStatus] ?? authVerificationStatus}</small>
+            {repositoryKind === "supabase" ? (
+              <>
+                <br />
+                <small>
+                  Telegram bridge: {telegramBridgeInfo.hasBridge ? "найден" : "не найден"} (
+                  {telegramBridgeInfo.bridgeSource}) · initData:{" "}
+                  {telegramBridgeInfo.hasInitData ? `есть (${telegramBridgeInfo.initDataSource})` : "нет"} ·
+                  verify request: {telegramBridgeInfo.verifyRequestSent ? "отправлен" : "не отправлен"}
+                </small>
+              </>
+            ) : null}
             {adminGuardMessage ? (
               <>
                 <br />

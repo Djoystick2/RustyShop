@@ -10,7 +10,10 @@ import {
 } from "react";
 import { getTelegramVerifyConfig } from "../config/runtime";
 import { createId, createUuid } from "../lib/id";
-import { getTelegramInitData, initTelegramWebApp, verifyTelegramInitData } from "../lib/telegram";
+import {
+  resolveTelegramRuntimeContext,
+  verifyTelegramInitData
+} from "../lib/telegram";
 import { hasAdminAccess } from "../security/admin-role";
 import type {
   Category,
@@ -18,6 +21,7 @@ import type {
   HomepageSection,
   GiveawaySessionStatus,
   Product,
+  Profile,
   SellerSettings,
   StoreSettings
 } from "../types/entities";
@@ -33,6 +37,7 @@ import type {
   ProductInput
 } from "../data/state";
 import { createFallbackBootstrap, makeAppState } from "../data/state";
+import type { TelegramWebAppUser } from "../types/telegram";
 
 type SavingKey =
   | "bootstrap"
@@ -52,11 +57,23 @@ type AuthVerificationStatus =
   | "no_endpoint"
   | "unavailable";
 
+type TelegramBridgeStatus = "loading" | "ready";
+
+interface TelegramBridgeInfo {
+  status: TelegramBridgeStatus;
+  hasBridge: boolean;
+  bridgeSource: "window" | "script" | "none";
+  hasInitData: boolean;
+  initDataSource: "webapp" | "url" | "none";
+  verifyRequestSent: boolean;
+}
+
 interface AppContextValue {
   state: AppState;
-  currentProfile: AppState["profiles"][number] | null;
+  currentProfile: Profile | null;
   isAdmin: boolean;
   telegramUserId: number | null;
+  telegramBridgeInfo: TelegramBridgeInfo;
   repositoryKind: AppRepository["kind"];
   isBootstrapping: boolean;
   bootstrapError: string | null;
@@ -124,6 +141,14 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [authVerificationStatus, setAuthVerificationStatus] =
     useState<AuthVerificationStatus>("idle");
   const [authVerificationMessage, setAuthVerificationMessage] = useState<string | null>(null);
+  const [verifyRequestSent, setVerifyRequestSent] = useState(false);
+  const [telegramBridgeStatus, setTelegramBridgeStatus] = useState<TelegramBridgeStatus>("loading");
+  const [telegramBridgeFound, setTelegramBridgeFound] = useState(false);
+  const [telegramBridgeSource, setTelegramBridgeSource] = useState<"window" | "script" | "none">("none");
+  const [telegramInitData, setTelegramInitData] = useState("");
+  const [telegramInitDataSource, setTelegramInitDataSource] =
+    useState<"webapp" | "url" | "none">("none");
+  const [telegramUser, setTelegramUser] = useState<TelegramWebAppUser | null>(null);
   const [savingMap, setSavingMap] = useState<Record<SavingKey, boolean>>({
     bootstrap: false,
     favorite: false,
@@ -134,8 +159,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     homepage: false,
     giveaway: false
   });
-
-  const telegramUser = useMemo(() => initTelegramWebApp(), []);
   const telegramUserId = telegramUser?.id ?? null;
 
   const runWithSaving = useCallback(async <T,>(key: SavingKey, action: () => Promise<T>) => {
@@ -146,6 +169,29 @@ export function AppProvider({ children }: PropsWithChildren) {
     } finally {
       setSavingMap((prev) => ({ ...prev, [key]: false }));
     }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTelegramBridgeStatus("loading");
+
+    void (async () => {
+      const runtime = await resolveTelegramRuntimeContext();
+      if (cancelled) {
+        return;
+      }
+
+      setTelegramBridgeFound(runtime.hasBridge);
+      setTelegramBridgeSource(runtime.bridgeSource);
+      setTelegramInitData(runtime.initData);
+      setTelegramInitDataSource(runtime.initDataSource);
+      setTelegramUser(runtime.user);
+      setTelegramBridgeStatus("ready");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const reload = useCallback(async () => {
@@ -171,11 +217,32 @@ export function AppProvider({ children }: PropsWithChildren) {
     if (repository.kind !== "supabase") {
       setAuthVerificationStatus("idle");
       setAuthVerificationMessage(null);
+      setVerifyRequestSent(false);
       return;
     }
 
     const verifyConfig = getTelegramVerifyConfig();
-    const initData = getTelegramInitData();
+    if (telegramBridgeStatus === "loading") {
+      setAuthVerificationStatus("verifying");
+      setAuthVerificationMessage("Подключаем Telegram bridge...");
+      return;
+    }
+
+    const initData = telegramInitData.trim();
+
+    if (!initData && telegramBridgeFound) {
+      setAuthVerificationStatus("unavailable");
+      setAuthVerificationMessage("Telegram bridge найден, но initData пустой.");
+      return;
+    }
+
+    if (!initData && !telegramBridgeFound) {
+      setAuthVerificationStatus("unavailable");
+      setAuthVerificationMessage(
+        "Telegram bridge не найден или не инициализирован в текущем окружении."
+      );
+      return;
+    }
 
     if (verifyConfig.source === "fallback") {
       setAuthVerificationStatus("no_endpoint");
@@ -193,6 +260,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     let cancelled = false;
     setAuthVerificationStatus("verifying");
     setAuthVerificationMessage(null);
+    setVerifyRequestSent(true);
 
     void (async () => {
       try {
@@ -200,7 +268,11 @@ export function AppProvider({ children }: PropsWithChildren) {
         if (cancelled) {
           return;
         }
-        setAuthVerificationStatus(result.ok ? "verified" : "failed");
+        if (!result.ok && verifyConfig.source === "fallback" && result.statusCode === 404) {
+          setAuthVerificationStatus("no_endpoint");
+        } else {
+          setAuthVerificationStatus(result.ok ? "verified" : "failed");
+        }
         const endpointSuffix =
           result.endpointSource === "fallback" ? " (через same-origin fallback)" : "";
         setAuthVerificationMessage(result.message ? `${result.message}${endpointSuffix}` : null);
@@ -215,10 +287,28 @@ export function AppProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [repository.kind, telegramUserId]);
+  }, [repository.kind, telegramBridgeFound, telegramBridgeStatus, telegramInitData]);
 
   const currentProfile =
     state.profiles.find((profile) => profile.id === state.activeProfileId) ?? state.profiles[0] ?? null;
+  const telegramBridgeInfo = useMemo<TelegramBridgeInfo>(
+    () => ({
+      status: telegramBridgeStatus,
+      hasBridge: telegramBridgeFound,
+      bridgeSource: telegramBridgeSource,
+      hasInitData: Boolean(telegramInitData.trim()),
+      initDataSource: telegramInitDataSource,
+      verifyRequestSent
+    }),
+    [
+      telegramBridgeFound,
+      telegramBridgeSource,
+      telegramBridgeStatus,
+      telegramInitData,
+      telegramInitDataSource,
+      verifyRequestSent
+    ]
+  );
   const hasRoleAccess = hasAdminAccess(currentProfile, state.storeSettings, telegramUserId);
 
   const adminGuardMessage = useMemo(() => {
@@ -849,6 +939,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       currentProfile,
       isAdmin,
       telegramUserId,
+      telegramBridgeInfo,
       repositoryKind: repository.kind,
       isBootstrapping,
       bootstrapError,
@@ -897,6 +988,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       reload,
       repository.kind,
       repository.uploadProductImages,
+      telegramBridgeInfo,
       saveCategory,
       saveHomepageSection,
       deleteHomepageSection,
