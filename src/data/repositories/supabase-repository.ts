@@ -66,9 +66,39 @@ function buildGuestProfile(context: BootstrapContext): Profile {
   };
 }
 
-async function ensureSingletonRows(client: SupabaseClient) {
-  await client.from("store_settings").upsert({ id: "main" }).select("id").maybeSingle();
-  await client.from("seller_settings").upsert({ id: "main" }).select("id").maybeSingle();
+function isAuthBootstrapError(error: unknown): boolean {
+  const raw = error as { status?: number | string; code?: string; message?: string } | null;
+  if (!raw) {
+    return false;
+  }
+
+  const status = Number(raw.status ?? NaN);
+  if (status === 401 || status === 403) {
+    return true;
+  }
+
+  const code = (raw.code ?? "").toString().toUpperCase();
+  if (code === "401" || code === "403") {
+    return true;
+  }
+
+  const message = (raw.message ?? "").toLowerCase();
+  return (
+    message.includes("not authorized") ||
+    message.includes("unauthorized") ||
+    message.includes("permission denied") ||
+    message.includes("row-level security") ||
+    message.includes("jwt")
+  );
+}
+
+function isNoRowsError(error: unknown): boolean {
+  const raw = error as { code?: string; message?: string } | null;
+  if (!raw) {
+    return false;
+  }
+
+  return raw.code === "PGRST116" || (raw.message ?? "").toLowerCase().includes("0 rows");
 }
 
 async function resolveProfile(client: SupabaseClient, context: BootstrapContext): Promise<Profile | null> {
@@ -102,28 +132,6 @@ async function resolveProfile(client: SupabaseClient, context: BootstrapContext)
     return mapProfile(profileByTelegram.data);
   }
 
-  // Attempt lightweight profile creation for environments where policy allows it.
-  const displayName = [context.telegramUser?.first_name, context.telegramUser?.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  const createResult = await client
-    .from("profiles")
-    .insert({
-      telegram_user_id: telegramId,
-      display_name: displayName || "Покупатель",
-      about: "",
-      role: "user",
-      avatar_url: ""
-    })
-    .select("*")
-    .maybeSingle();
-
-  if (!createResult.error && createResult.data) {
-    return mapProfile(createResult.data);
-  }
-
   return null;
 }
 
@@ -136,7 +144,7 @@ export function createSupabaseRepository(): AppRepository {
     kind: "supabase",
     async bootstrap(context) {
       const client = assertClient();
-      await ensureSingletonRows(client);
+      const fallback = createFallbackBootstrap();
 
       const profile = await resolveProfile(client, context);
 
@@ -154,44 +162,52 @@ export function createSupabaseRepository(): AppRepository {
         selectOrderedTable(client, "categories", "sort_order"),
         selectOrderedTable(client, "products", "created_at"),
         selectOrderedTable(client, "product_images", "position"),
-        client.from("store_settings").select("*").eq("id", "main").single(),
-        client.from("seller_settings").select("*").eq("id", "main").single(),
+        client.from("store_settings").select("*").eq("id", "main").maybeSingle(),
+        client.from("seller_settings").select("*").eq("id", "main").maybeSingle(),
         selectOrderedTable(client, "homepage_sections", "sort_order"),
         selectOrderedTable(client, "giveaway_sessions", "created_at"),
         selectOrderedTable(client, "giveaway_items", "created_at"),
         selectOrderedTable(client, "giveaway_results", "won_at")
       ]);
 
-      if (categoriesResult.error) {
+      if (categoriesResult.error && !isAuthBootstrapError(categoriesResult.error)) {
         throw new Error(formatDbError(categoriesResult.error));
       }
-      if (productsResult.error) {
+      if (productsResult.error && !isAuthBootstrapError(productsResult.error)) {
         throw new Error(formatDbError(productsResult.error));
       }
-      if (productImagesResult.error) {
+      if (productImagesResult.error && !isAuthBootstrapError(productImagesResult.error)) {
         throw new Error(formatDbError(productImagesResult.error));
       }
-      if (storeSettingsResult.error) {
+      if (
+        storeSettingsResult.error &&
+        !isAuthBootstrapError(storeSettingsResult.error) &&
+        !isNoRowsError(storeSettingsResult.error)
+      ) {
         throw new Error(formatDbError(storeSettingsResult.error));
       }
-      if (sellerSettingsResult.error) {
+      if (
+        sellerSettingsResult.error &&
+        !isAuthBootstrapError(sellerSettingsResult.error) &&
+        !isNoRowsError(sellerSettingsResult.error)
+      ) {
         throw new Error(formatDbError(sellerSettingsResult.error));
       }
-      if (homepageSectionsResult.error) {
+      if (homepageSectionsResult.error && !isAuthBootstrapError(homepageSectionsResult.error)) {
         throw new Error(formatDbError(homepageSectionsResult.error));
       }
-      if (sessionsResult.error) {
+      if (sessionsResult.error && !isAuthBootstrapError(sessionsResult.error)) {
         throw new Error(formatDbError(sessionsResult.error));
       }
-      if (itemsResult.error) {
+      if (itemsResult.error && !isAuthBootstrapError(itemsResult.error)) {
         throw new Error(formatDbError(itemsResult.error));
       }
-      if (resultsResult.error) {
+      if (resultsResult.error && !isAuthBootstrapError(resultsResult.error)) {
         throw new Error(formatDbError(resultsResult.error));
       }
 
       const activeProfile = profile ?? buildGuestProfile(context);
-      let favorites = createFallbackBootstrap().favorites;
+      let favorites = fallback.favorites;
       if (profile) {
         const favoritesResult = await client
           .from("favorites")
@@ -211,16 +227,34 @@ export function createSupabaseRepository(): AppRepository {
       return {
         activeProfileId: activeProfile.id,
         profiles: [activeProfile],
-        categories: categoriesResult.data.map(mapCategory),
-        products: productsResult.data.map(mapProduct),
-        productImages: productImagesResult.data.map(mapProductImage),
+        categories: categoriesResult.error
+          ? fallback.categories
+          : (categoriesResult.data ?? []).map(mapCategory),
+        products: productsResult.error ? fallback.products : (productsResult.data ?? []).map(mapProduct),
+        productImages: productImagesResult.error
+          ? fallback.productImages
+          : (productImagesResult.data ?? []).map(mapProductImage),
         favorites,
-        storeSettings: mapStoreSettings(storeSettingsResult.data),
-        sellerSettings: mapSellerSettings(sellerSettingsResult.data),
-        homepageSections: homepageSectionsResult.data.map(mapHomepageSection),
-        giveawaySessions: sessionsResult.data.map(mapGiveawaySession),
-        giveawayItems: itemsResult.data.map(mapGiveawayItem),
-        giveawayResults: resultsResult.data.map(mapGiveawayResult)
+        storeSettings:
+          storeSettingsResult.error || !storeSettingsResult.data
+            ? fallback.storeSettings
+            : mapStoreSettings(storeSettingsResult.data),
+        sellerSettings:
+          sellerSettingsResult.error || !sellerSettingsResult.data
+            ? fallback.sellerSettings
+            : mapSellerSettings(sellerSettingsResult.data),
+        homepageSections: homepageSectionsResult.error
+          ? fallback.homepageSections
+          : (homepageSectionsResult.data ?? []).map(mapHomepageSection),
+        giveawaySessions: sessionsResult.error
+          ? fallback.giveawaySessions
+          : (sessionsResult.data ?? []).map(mapGiveawaySession),
+        giveawayItems: itemsResult.error
+          ? fallback.giveawayItems
+          : (itemsResult.data ?? []).map(mapGiveawayItem),
+        giveawayResults: resultsResult.error
+          ? fallback.giveawayResults
+          : (resultsResult.data ?? []).map(mapGiveawayResult)
       };
     },
     async reloadProfile(currentProfileId, context) {
