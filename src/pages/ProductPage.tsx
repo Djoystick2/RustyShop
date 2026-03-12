@@ -6,8 +6,8 @@ import { buildAcquireLink } from "../lib/acquire-link";
 import { PRODUCT_PLACEHOLDER_IMAGE } from "../lib/placeholders";
 import {
   canViewProduct,
-  getProductImages,
   getPrimaryProductImage,
+  getProductImages,
   sortProducts
 } from "../lib/product-utils";
 import { openTelegramLink } from "../lib/telegram";
@@ -43,7 +43,6 @@ export function ProductPage() {
     toggleFavorite,
     toggleProductAvailability,
     toggleProductFeatured,
-    toggleProductGiveaway,
     toggleProductVisibility
   } = useAppContext();
   const product = state.products.find((item) => item.id === productId);
@@ -161,14 +160,16 @@ export function ProductPage() {
         </div>
 
         <div className="toolbar product-page__cta">
-          <button
-            type="button"
-            className="btn btn_primary"
-            onClick={() => openTelegramLink(buyLink)}
-            disabled={product.status === "sold_out"}
-          >
-            {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
-          </button>
+          {!isAdmin ? (
+            <button
+              type="button"
+              className="btn btn_primary"
+              onClick={() => openTelegramLink(buyLink)}
+              disabled={product.status === "sold_out"}
+            >
+              {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn btn_secondary"
@@ -176,11 +177,19 @@ export function ProductPage() {
           >
             {isFavorite ? "Убрать из избранного" : "В избранное"}
           </button>
+          {isAdmin ? (
+            <Link to="/profile" className="btn btn_secondary">
+              Открыть админ-панель
+            </Link>
+          ) : null}
         </div>
-        <small>
-          Связь с мастером: @{state.sellerSettings.telegramUsername || "seller"} ·{" "}
-          {state.sellerSettings.city}
-        </small>
+        {!isAdmin ? (
+          <small>
+            Связь с мастером: @{state.sellerSettings.telegramUsername || "seller"} · {state.sellerSettings.city}
+          </small>
+        ) : (
+          <small>Управление розыгрышем и лотами доступно на вкладке «Розыгрыш».</small>
+        )}
 
         {isAdmin ? (
           <div className="toolbar">
@@ -193,9 +202,6 @@ export function ProductPage() {
               onClick={() => void toggleProductAvailability(product.id)}
             >
               {product.isAvailable ? "Под заказ" : "В наличии"}
-            </button>
-            <button type="button" className="btn btn_ghost" onClick={() => void toggleProductGiveaway(product.id)}>
-              {product.isGiveawayEligible ? "Убрать из розыгрыша" : "Добавить в розыгрыш"}
             </button>
             <button type="button" className="btn btn_ghost" onClick={() => void toggleProductFeatured(product.id)}>
               {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
@@ -218,6 +224,7 @@ export function ProductPage() {
                 product={item}
                 sellerSettings={state.sellerSettings}
                 imageUrl={getPrimaryProductImage(item.id, state.productImages)}
+                isAdmin={isAdmin}
               />
             ))}
           </div>
@@ -226,4 +233,3 @@ export function ProductPage() {
     </div>
   );
 }
-

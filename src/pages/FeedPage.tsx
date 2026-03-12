@@ -56,7 +56,6 @@ export function FeedPage() {
     toggleFavorite,
     toggleProductAvailability,
     toggleProductFeatured,
-    toggleProductGiveaway,
     toggleProductVisibility
   } = useAppContext();
 
@@ -170,7 +169,6 @@ export function FeedPage() {
                 onToggleFavorite={toggleFavorite}
                 onToggleVisibility={toggleProductVisibility}
                 onToggleAvailability={toggleProductAvailability}
-                onToggleGiveaway={toggleProductGiveaway}
                 onToggleFeatured={toggleProductFeatured}
               />
             ))
@@ -192,6 +190,7 @@ export function FeedPage() {
             productImages={state.productImages}
             storeSettings={state.storeSettings}
             sellerSettings={state.sellerSettings}
+            isAdmin={isAdmin}
           />
         ))
       )}
@@ -250,7 +249,6 @@ export function FeedPage() {
               onToggleFavorite={toggleFavorite}
               onToggleVisibility={toggleProductVisibility}
               onToggleAvailability={toggleProductAvailability}
-              onToggleGiveaway={toggleProductGiveaway}
               onToggleFeatured={toggleProductFeatured}
             />
           ))

@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom";
 import { ProductMiniCard } from "../products/ProductMiniCard";
 import { getPrimaryProductImage } from "../../lib/product-utils";
-import type { Category, HomepageSection, Product, ProductImage, SellerSettings, StoreSettings } from "../../types/entities";
+import type {
+  Category,
+  HomepageSection,
+  Product,
+  ProductImage,
+  SellerSettings,
+  StoreSettings
+} from "../../types/entities";
 
 interface HomepageSectionRendererProps {
   section: HomepageSection;
@@ -10,12 +17,14 @@ interface HomepageSectionRendererProps {
   productImages: ProductImage[];
   storeSettings: StoreSettings;
   sellerSettings: SellerSettings;
+  isAdmin: boolean;
 }
 
 function renderProductShelf(
   products: Product[],
   sellerSettings: SellerSettings,
   productImages: ProductImage[],
+  isAdmin: boolean,
   emptyText: string
 ) {
   if (products.length === 0) {
@@ -34,6 +43,7 @@ function renderProductShelf(
           product={product}
           sellerSettings={sellerSettings}
           imageUrl={getPrimaryProductImage(product.id, productImages)}
+          isAdmin={isAdmin}
         />
       ))}
     </div>
@@ -46,7 +56,8 @@ export function HomepageSectionRenderer({
   categories,
   productImages,
   storeSettings,
-  sellerSettings
+  sellerSettings,
+  isAdmin
 }: HomepageSectionRendererProps) {
   if (!section.isEnabled) {
     return null;
@@ -109,7 +120,13 @@ export function HomepageSectionRenderer({
             </Link>
           ) : null}
         </div>
-        {renderProductShelf(products, sellerSettings, productImages, "В этой подборке пока нет товаров.")}
+        {renderProductShelf(
+          products,
+          sellerSettings,
+          productImages,
+          isAdmin,
+          "В этой подборке пока нет товаров."
+        )}
       </section>
     );
   }
@@ -119,7 +136,13 @@ export function HomepageSectionRenderer({
       <section className="stack">
         <h2 className="section-title">{section.title || "Сезонная подборка"}</h2>
         {section.subtitle ? <p className="section-subtitle">{section.subtitle}</p> : null}
-        {renderProductShelf(products, sellerSettings, productImages, "Сезонная подборка пока пуста.")}
+        {renderProductShelf(
+          products,
+          sellerSettings,
+          productImages,
+          isAdmin,
+          "Сезонная подборка пока пуста."
+        )}
       </section>
     );
   }
@@ -129,7 +152,7 @@ export function HomepageSectionRenderer({
       <section className="stack">
         <h2 className="section-title">{section.title || "Новинки"}</h2>
         {section.subtitle ? <p className="section-subtitle">{section.subtitle}</p> : null}
-        {renderProductShelf(products, sellerSettings, productImages, "Новинок пока нет.")}
+        {renderProductShelf(products, sellerSettings, productImages, isAdmin, "Новинок пока нет.")}
       </section>
     );
   }
@@ -139,7 +162,13 @@ export function HomepageSectionRenderer({
       <section className="stack">
         <h2 className="section-title">{section.title || "Рекомендуем"}</h2>
         {section.subtitle ? <p className="section-subtitle">{section.subtitle}</p> : null}
-        {renderProductShelf(products, sellerSettings, productImages, "Рекомендации скоро появятся.")}
+        {renderProductShelf(
+          products,
+          sellerSettings,
+          productImages,
+          isAdmin,
+          "Рекомендации скоро появятся."
+        )}
       </section>
     );
   }
@@ -149,7 +178,13 @@ export function HomepageSectionRenderer({
       <section className="stack">
         <h2 className="section-title">{section.title || "Участвуют в розыгрыше"}</h2>
         {section.subtitle ? <p className="section-subtitle">{section.subtitle}</p> : null}
-        {renderProductShelf(products, sellerSettings, productImages, "Сейчас нет товаров в розыгрыше.")}
+        {renderProductShelf(
+          products,
+          sellerSettings,
+          productImages,
+          isAdmin,
+          "Сейчас нет товаров в розыгрыше."
+        )}
       </section>
     );
   }

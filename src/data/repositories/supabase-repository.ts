@@ -101,6 +101,46 @@ function isNoRowsError(error: unknown): boolean {
   return raw.code === "PGRST116" || (raw.message ?? "").toLowerCase().includes("0 rows");
 }
 
+function isSingleObjectCoerceError(error: unknown): boolean {
+  const raw = error as { code?: string; message?: string } | null;
+  if (!raw) {
+    return false;
+  }
+
+  const message = (raw.message ?? "").toLowerCase();
+  return (
+    message.includes("cannot coerce the result to a single json object") ||
+    message.includes("json object requested") ||
+    raw.code === "PGRST116"
+  );
+}
+
+function isUuid(value: string | null | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function unwrapSingleRow<T>(
+  data: T | null,
+  error: { message: string; code?: string } | null,
+  options?: {
+    noRowMessage?: string;
+  }
+): T {
+  if (error) {
+    if (isSingleObjectCoerceError(error) && options?.noRowMessage) {
+      throw new Error(options.noRowMessage);
+    }
+    throw new Error(formatDbError(error));
+  }
+  if (!data) {
+    throw new Error(options?.noRowMessage || "Запись не найдена или недоступна для текущего пользователя.");
+  }
+  return data;
+}
+
 async function resolveProfile(client: SupabaseClient, context: BootstrapContext): Promise<Profile | null> {
   const authResult = await client.auth.getUser();
   const authUserId = authResult.data.user?.id ?? null;
@@ -279,13 +319,13 @@ export function createSupabaseRepository(): AppRepository {
         .from("categories")
         .upsert(toCategoryInsert(category))
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-
-      return mapCategory(data);
+      return mapCategory(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Категория не сохранена: запись недоступна или не создана."
+        })
+      );
     },
     async upsertHomepageSection(section) {
       const client = assertClient();
@@ -303,13 +343,13 @@ export function createSupabaseRepository(): AppRepository {
           sort_order: section.sortOrder
         })
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-
-      return mapHomepageSection(data);
+      return mapHomepageSection(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Секция витрины не сохранена: запись недоступна или не создана."
+        })
+      );
     },
     async deleteHomepageSection(sectionId: string) {
       const client = assertClient();
@@ -324,14 +364,14 @@ export function createSupabaseRepository(): AppRepository {
         .from("products")
         .upsert(toProductInsert(product))
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
+      const savedProduct = unwrapSingleRow(data, error, {
+        noRowMessage: "Товар не сохранен: запись недоступна или не создана."
+      });
 
       const cleanUrls = imageUrls.map((item) => item.trim()).filter(Boolean);
-      const deleteResult = await client.from("product_images").delete().eq("product_id", data.id);
+      const deleteResult = await client.from("product_images").delete().eq("product_id", savedProduct.id);
       if (deleteResult.error) {
         throw new Error(formatDbError(deleteResult.error));
       }
@@ -339,7 +379,7 @@ export function createSupabaseRepository(): AppRepository {
       if (cleanUrls.length > 0) {
         const imageInsert = cleanUrls.map((url, index) => ({
           id: createUuid(),
-          product_id: data.id,
+          product_id: savedProduct.id,
           url,
           is_primary: index === 0,
           position: index + 1
@@ -354,7 +394,7 @@ export function createSupabaseRepository(): AppRepository {
       const imagesResult = await client
         .from("product_images")
         .select("*")
-        .eq("product_id", data.id)
+        .eq("product_id", savedProduct.id)
         .order("position", { ascending: true });
 
       if (imagesResult.error) {
@@ -362,7 +402,7 @@ export function createSupabaseRepository(): AppRepository {
       }
 
       return {
-        product: mapProduct(data),
+        product: mapProduct(savedProduct),
         productImages: imagesResult.data.map(mapProductImage)
       };
     },
@@ -378,13 +418,13 @@ export function createSupabaseRepository(): AppRepository {
         })
         .eq("id", productId)
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-
-      return mapProduct(data);
+      return mapProduct(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Не удалось изменить товар: он не найден или нет прав на обновление."
+        })
+      );
     },
     async updateStoreSettings(patch) {
       const client = assertClient();
@@ -392,11 +432,16 @@ export function createSupabaseRepository(): AppRepository {
         id: "main",
         ...toStoreSettingsPatch(patch)
       };
-      const { data, error } = await client.from("store_settings").upsert(payload).select("*").single();
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-      return mapStoreSettings(data);
+      const { data, error } = await client
+        .from("store_settings")
+        .upsert(payload)
+        .select("*")
+        .maybeSingle();
+      return mapStoreSettings(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Настройки магазина не сохранены: запись недоступна или нет прав."
+        })
+      );
     },
     async updateSellerSettings(patch) {
       const client = assertClient();
@@ -404,11 +449,16 @@ export function createSupabaseRepository(): AppRepository {
         id: "main",
         ...toSellerSettingsPatch(patch)
       };
-      const { data, error } = await client.from("seller_settings").upsert(payload).select("*").single();
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-      return mapSellerSettings(data);
+      const { data, error } = await client
+        .from("seller_settings")
+        .upsert(payload)
+        .select("*")
+        .maybeSingle();
+      return mapSellerSettings(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Настройки продавца не сохранены: запись недоступна или нет прав."
+        })
+      );
     },
     async setFavorite({ profileId, productId, isFavorite }) {
       const client = assertClient();
@@ -524,13 +574,13 @@ export function createSupabaseRepository(): AppRepository {
           status: "draft"
         })
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-
-      return mapGiveawaySession(data);
+      return mapGiveawaySession(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Сессия розыгрыша не создана: нет прав или запись недоступна."
+        })
+      );
     },
     async updateGiveawaySession(sessionId: string, patch: GiveawaySessionPatch) {
       const client = assertClient();
@@ -544,13 +594,13 @@ export function createSupabaseRepository(): AppRepository {
         })
         .eq("id", sessionId)
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-
-      return mapGiveawaySession(data);
+      return mapGiveawaySession(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Сессия розыгрыша не обновлена: запись не найдена или нет прав."
+        })
+      );
     },
     async updateGiveawaySessionStatus(sessionId, status) {
       const client = assertClient();
@@ -559,13 +609,13 @@ export function createSupabaseRepository(): AppRepository {
         .update({ status })
         .eq("id", sessionId)
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-
-      return mapGiveawaySession(data);
+      return mapGiveawaySession(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Статус сессии не обновлен: запись не найдена или нет прав."
+        })
+      );
     },
     async saveGiveawayItem(item) {
       const client = assertClient();
@@ -582,13 +632,13 @@ export function createSupabaseRepository(): AppRepository {
           { onConflict: "session_id,product_id" }
         )
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        throw new Error(formatDbError(error));
-      }
-
-      return mapGiveawayItem(data);
+      return mapGiveawayItem(
+        unwrapSingleRow(data, error, {
+          noRowMessage: "Лот не сохранен: запись недоступна или нет прав."
+        })
+      );
     },
     async removeGiveawayItem(itemId: string) {
       const client = assertClient();
@@ -599,23 +649,24 @@ export function createSupabaseRepository(): AppRepository {
     },
     async createGiveawayResult(input) {
       const client = assertClient();
+      const safeProfileId = isUuid(input.profileId) ? input.profileId : null;
       const insertResult = await client
         .from("giveaway_results")
         .insert({
           id: createUuid(),
           session_id: input.sessionId,
           product_id: input.productId,
-          profile_id: input.profileId,
+          profile_id: safeProfileId,
           winner_nickname: input.winnerNickname,
           spin_duration_ms: input.spinDurationMs,
           note: input.note?.trim() || ""
         })
         .select("*")
-        .single();
+        .maybeSingle();
 
-      if (insertResult.error || !insertResult.data) {
-        throw new Error(formatDbError(insertResult.error));
-      }
+      const resultRow = unwrapSingleRow(insertResult.data, insertResult.error, {
+        noRowMessage: "Результат розыгрыша не сохранен: нет прав или запись не создана."
+      });
 
       let updatedItem: ReturnType<typeof mapGiveawayItem> | null = null;
       const itemResult = await client
@@ -643,7 +694,7 @@ export function createSupabaseRepository(): AppRepository {
       }
 
       return {
-        result: mapGiveawayResult(insertResult.data),
+        result: mapGiveawayResult(resultRow),
         updatedItem
       };
     },

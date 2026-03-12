@@ -93,7 +93,6 @@ interface AppContextValue {
   saveProduct: (input: ProductInput) => Promise<void>;
   toggleProductVisibility: (productId: string) => Promise<void>;
   toggleProductAvailability: (productId: string) => Promise<void>;
-  toggleProductGiveaway: (productId: string) => Promise<void>;
   toggleProductFeatured: (productId: string) => Promise<void>;
   updateStoreSettings: (payload: Partial<StoreSettings>) => Promise<void>;
   updateSellerSettings: (payload: Partial<SellerSettings>) => Promise<void>;
@@ -116,6 +115,12 @@ function mapError(error: unknown): string {
     if (error.message.includes("FAVORITES_AUTH_REQUIRED")) {
       return "Чтобы сохранять избранное, откройте Mini App из Telegram-аккаунта.";
     }
+    if (error.message.toLowerCase().includes("cannot coerce the result to a single json object")) {
+      return "Операция не выполнена: запись не найдена или недоступна для текущих прав.";
+    }
+    if (error.message.toLowerCase().includes("invalid input syntax for type uuid")) {
+      return "Операция не выполнена: профиль не синхронизирован с backend UUID.";
+    }
     return error.message;
   }
   return "Произошла ошибка. Попробуйте ещё раз.";
@@ -128,6 +133,13 @@ function mergeFavorites(
 ): Favorite[] {
   const otherProfiles = existing.filter((favorite) => favorite.profileId !== profileId);
   return [...otherProfiles, ...incoming];
+}
+
+function isUuid(value: string | null | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export function AppProvider({ children }: PropsWithChildren) {
@@ -641,22 +653,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     [state.products, updateProductFlags]
   );
 
-  const toggleProductGiveaway = useCallback(
-    async (productId: string) => {
-      const product = state.products.find((item) => item.id === productId);
-      if (!product) {
-        return;
-      }
-      await updateProductFlags(productId, {
-        isVisible: product.isVisible,
-        isAvailable: product.isAvailable,
-        isGiveawayEligible: !product.isGiveawayEligible,
-        isFeatured: product.isFeatured
-      });
-    },
-    [state.products, updateProductFlags]
-  );
-
   const toggleProductFeatured = useCallback(
     async (productId: string) => {
       const product = state.products.find((item) => item.id === productId);
@@ -888,10 +884,11 @@ export function AppProvider({ children }: PropsWithChildren) {
       }
       setActionError(null);
       try {
+        const profileId = isUuid(currentProfile?.id) ? currentProfile.id : null;
         const payload = await runWithSaving("giveaway", () =>
           repository.createGiveawayResult({
             ...input,
-            profileId: currentProfile?.id ?? null
+            profileId
           })
         );
 
@@ -959,7 +956,6 @@ export function AppProvider({ children }: PropsWithChildren) {
       saveProduct,
       toggleProductVisibility,
       toggleProductAvailability,
-      toggleProductGiveaway,
       toggleProductFeatured,
       updateStoreSettings,
       updateSellerSettings,
@@ -1002,7 +998,6 @@ export function AppProvider({ children }: PropsWithChildren) {
       toggleFavorite,
       toggleProductAvailability,
       toggleProductFeatured,
-      toggleProductGiveaway,
       toggleProductVisibility,
       updateGiveawaySessionStatus,
       removeGiveawayItem,

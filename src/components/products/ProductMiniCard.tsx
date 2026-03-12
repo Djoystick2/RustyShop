@@ -8,9 +8,15 @@ interface ProductMiniCardProps {
   product: Product;
   imageUrl?: string;
   sellerSettings: SellerSettings;
+  isAdmin?: boolean;
 }
 
-export function ProductMiniCard({ product, imageUrl, sellerSettings }: ProductMiniCardProps) {
+export function ProductMiniCard({
+  product,
+  imageUrl,
+  sellerSettings,
+  isAdmin = false
+}: ProductMiniCardProps) {
   const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
   const buyLink = buildAcquireLink(sellerSettings, product.title);
 
@@ -29,16 +35,21 @@ export function ProductMiniCard({ product, imageUrl, sellerSettings }: ProductMi
           {product.isGiveawayEligible ? <span className="badge badge_giveaway">Розыгрыш</span> : null}
         </div>
         <p className="mini-product-card__price">{product.priceText}</p>
-        <button
-          type="button"
-          className="btn btn_secondary"
-          onClick={() => openTelegramLink(buyLink)}
-          disabled={!product.isAvailable}
-        >
-          {sellerSettings.purchaseButtonLabel || "Приобрести"}
-        </button>
+        {!isAdmin ? (
+          <button
+            type="button"
+            className="btn btn_secondary"
+            onClick={() => openTelegramLink(buyLink)}
+            disabled={product.status === "sold_out"}
+          >
+            {sellerSettings.purchaseButtonLabel || "Приобрести"}
+          </button>
+        ) : (
+          <Link to={`/product/${product.id}`} className="btn btn_secondary">
+            Открыть
+          </Link>
+        )}
       </div>
     </article>
   );
 }
-

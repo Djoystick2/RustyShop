@@ -13,7 +13,6 @@ interface ProductCardProps {
   onToggleFavorite: (productId: string) => void | Promise<void>;
   onToggleVisibility: (productId: string) => void | Promise<void>;
   onToggleAvailability: (productId: string) => void | Promise<void>;
-  onToggleGiveaway: (productId: string) => void | Promise<void>;
   onToggleFeatured: (productId: string) => void | Promise<void>;
 }
 
@@ -47,7 +46,6 @@ export function ProductCard({
   onToggleFavorite,
   onToggleVisibility,
   onToggleAvailability,
-  onToggleGiveaway,
   onToggleFeatured
 }: ProductCardProps) {
   const buyLink = buildAcquireLink(sellerSettings, product.title);
@@ -86,20 +84,22 @@ export function ProductCard({
         <p className="product-card__price">{product.priceText}</p>
 
         <div className="product-card__actions">
-          <button
-            type="button"
-            className="btn btn_primary"
-            onClick={() => openTelegramLink(buyLink)}
-            disabled={!product.isAvailable && product.status !== "sold_out"}
-          >
-            {sellerSettings.purchaseButtonLabel || "Приобрести"}
-          </button>
+          {!isAdmin ? (
+            <button
+              type="button"
+              className="btn btn_primary"
+              onClick={() => openTelegramLink(buyLink)}
+              disabled={product.status === "sold_out"}
+            >
+              {sellerSettings.purchaseButtonLabel || "Приобрести"}
+            </button>
+          ) : null}
           <Link to={`/product/${product.id}`} className="btn btn_secondary">
-            Подробнее
+            {isAdmin ? "Открыть управление" : "Подробнее"}
           </Link>
         </div>
 
-        {product.status === "sold_out" ? (
+        {!isAdmin && product.status === "sold_out" ? (
           <small>Товар продан, но можно заказать похожий.</small>
         ) : null}
 
@@ -111,9 +111,6 @@ export function ProductCard({
             <button type="button" className="btn btn_ghost" onClick={() => void onToggleAvailability(product.id)}>
               {product.isAvailable ? "Под заказ" : "В наличии"}
             </button>
-            <button type="button" className="btn btn_ghost" onClick={() => void onToggleGiveaway(product.id)}>
-              {product.isGiveawayEligible ? "Убрать розыгрыш" : "В розыгрыш"}
-            </button>
             <button type="button" className="btn btn_ghost" onClick={() => void onToggleFeatured(product.id)}>
               {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
             </button>
@@ -123,4 +120,3 @@ export function ProductCard({
     </article>
   );
 }
-

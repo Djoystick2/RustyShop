@@ -20,7 +20,6 @@ export function CategoryPage() {
     toggleFavorite,
     toggleProductAvailability,
     toggleProductFeatured,
-    toggleProductGiveaway,
     toggleProductVisibility
   } = useAppContext();
 
@@ -143,7 +142,6 @@ export function CategoryPage() {
               onToggleFavorite={toggleFavorite}
               onToggleVisibility={toggleProductVisibility}
               onToggleAvailability={toggleProductAvailability}
-              onToggleGiveaway={toggleProductGiveaway}
               onToggleFeatured={toggleProductFeatured}
             />
           ))}
