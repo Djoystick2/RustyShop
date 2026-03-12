@@ -30,6 +30,7 @@
    - `202603120003_brand_homepage_sections.sql`
    - `202603120004_runtime_readiness_fixes.sql`
    - `202603120005_giveaway_session_spin_duration.sql`
+   - `202603120006_runtime_admin_write_access.sql`
 3. Опционально примените `supabase/seed.sql` для smoke-test данных.
 
 ## 3. Проверьте storage

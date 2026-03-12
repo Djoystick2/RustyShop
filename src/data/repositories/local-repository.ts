@@ -230,7 +230,7 @@ export function createLocalRepository(): AppRepository {
         drawAt: input.drawAt,
         spinDurationMs:
           typeof input.spinDurationMs === "number" && Number.isFinite(input.spinDurationMs)
-            ? Math.max(2000, Math.min(12000, Math.round(input.spinDurationMs)))
+            ? Math.max(2000, Math.min(180000, Math.round(input.spinDurationMs)))
             : 6000,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -251,7 +251,7 @@ export function createLocalRepository(): AppRepository {
         ...patch,
         spinDurationMs:
           typeof patch.spinDurationMs === "number" && Number.isFinite(patch.spinDurationMs)
-            ? Math.max(2000, Math.min(12000, Math.round(patch.spinDurationMs)))
+            ? Math.max(2000, Math.min(180000, Math.round(patch.spinDurationMs)))
             : session.spinDurationMs,
         updatedAt: new Date().toISOString()
       };

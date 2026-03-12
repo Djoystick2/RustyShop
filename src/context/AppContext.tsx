@@ -221,6 +221,18 @@ export function AppProvider({ children }: PropsWithChildren) {
     });
   }, [repository, runWithSaving, telegramUser]);
 
+  const syncSupabaseState = useCallback(async () => {
+    if (repository.kind !== "supabase") {
+      return;
+    }
+
+    const payload = await repository.bootstrap({ telegramUser });
+    setState((prev) => ({
+      ...makeAppState(payload),
+      searchQuery: prev.searchQuery
+    }));
+  }, [repository, telegramUser]);
+
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -614,11 +626,12 @@ export function AppProvider({ children }: PropsWithChildren) {
           ...prev,
           products: prev.products.map((item) => (item.id === updated.id ? updated : item))
         }));
+        await syncSupabaseState();
       } catch (error) {
         setActionError(mapError(error));
       }
     },
-    [guardAdminAction, repository, runWithSaving]
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const toggleProductVisibility = useCallback(
@@ -680,11 +693,12 @@ export function AppProvider({ children }: PropsWithChildren) {
           repository.updateStoreSettings(payload)
         );
         setState((prev) => ({ ...prev, storeSettings: saved }));
+        await syncSupabaseState();
       } catch (error) {
         setActionError(mapError(error));
       }
     },
-    [guardAdminAction, repository, runWithSaving]
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const updateSellerSettings = useCallback(
@@ -698,11 +712,12 @@ export function AppProvider({ children }: PropsWithChildren) {
           repository.updateSellerSettings(payload)
         );
         setState((prev) => ({ ...prev, sellerSettings: saved }));
+        await syncSupabaseState();
       } catch (error) {
         setActionError(mapError(error));
       }
     },
-    [guardAdminAction, repository, runWithSaving]
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const toggleFavorite = useCallback(
@@ -768,13 +783,14 @@ export function AppProvider({ children }: PropsWithChildren) {
           ...prev,
           giveawaySessions: [session, ...prev.giveawaySessions]
         }));
+        await syncSupabaseState();
         return true;
       } catch (error) {
         setActionError(mapError(error));
         return false;
       }
     },
-    [guardAdminAction, repository, runWithSaving]
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const updateGiveawaySession = useCallback(
@@ -793,13 +809,14 @@ export function AppProvider({ children }: PropsWithChildren) {
             session.id === updated.id ? updated : session
           )
         }));
+        await syncSupabaseState();
         return true;
       } catch (error) {
         setActionError(mapError(error));
         return false;
       }
     },
-    [guardAdminAction, repository, runWithSaving]
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const updateGiveawaySessionStatus = useCallback(
@@ -818,13 +835,14 @@ export function AppProvider({ children }: PropsWithChildren) {
             session.id === updated.id ? updated : session
           )
         }));
+        await syncSupabaseState();
         return true;
       } catch (error) {
         setActionError(mapError(error));
         return false;
       }
     },
-    [guardAdminAction, repository, runWithSaving]
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const attachProductToGiveaway = useCallback(
@@ -857,13 +875,14 @@ export function AppProvider({ children }: PropsWithChildren) {
               : [...prev.giveawayItems, saved]
           };
         });
+        await syncSupabaseState();
         return true;
       } catch (error) {
         setActionError(mapError(error));
         return false;
       }
     },
-    [guardAdminAction, repository, runWithSaving, state.giveawayItems]
+    [guardAdminAction, repository, runWithSaving, state.giveawayItems, syncSupabaseState]
   );
 
   const removeGiveawayItem = useCallback(
@@ -878,13 +897,14 @@ export function AppProvider({ children }: PropsWithChildren) {
           ...prev,
           giveawayItems: prev.giveawayItems.filter((item) => item.id !== itemId)
         }));
+        await syncSupabaseState();
         return true;
       } catch (error) {
         setActionError(mapError(error));
         return false;
       }
     },
-    [guardAdminAction, repository, runWithSaving]
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const runGiveawaySpin = useCallback(
@@ -933,13 +953,14 @@ export function AppProvider({ children }: PropsWithChildren) {
             giveawaySessions: nextSessions
           };
         });
+        await syncSupabaseState();
         return true;
       } catch (error) {
         setActionError(mapError(error));
         return false;
       }
     },
-    [currentProfile?.id, guardAdminAction, repository, runWithSaving]
+    [currentProfile?.id, guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const value = useMemo<AppContextValue>(

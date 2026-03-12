@@ -20,7 +20,7 @@ function normalizeSpinDuration(value: string | number): number {
   if (!Number.isFinite(parsed)) {
     return 6;
   }
-  return Math.max(2, Math.min(12, Math.round(parsed)));
+  return Math.max(2, Math.min(180, Math.round(parsed)));
 }
 
 function sessionDurationToSeconds(spinDurationMs: number | null | undefined): number {
@@ -538,7 +538,7 @@ export function GiveawayPage() {
                 <input
                   type="number"
                   min={2}
-                  max={12}
+                  max={180}
                   value={spinDurationInput}
                   onChange={(event) => setSpinDurationInput(event.target.value)}
                   onBlur={() => {

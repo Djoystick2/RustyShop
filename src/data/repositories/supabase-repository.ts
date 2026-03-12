@@ -629,7 +629,7 @@ export function createSupabaseRepository(): AppRepository {
       const client = assertClient();
       const spinDurationMs =
         typeof input.spinDurationMs === "number" && Number.isFinite(input.spinDurationMs)
-          ? Math.max(2000, Math.min(12000, Math.round(input.spinDurationMs)))
+          ? Math.max(2000, Math.min(180000, Math.round(input.spinDurationMs)))
           : 6000;
 
       const { data, error } = await client
@@ -661,7 +661,7 @@ export function createSupabaseRepository(): AppRepository {
       };
 
       if (typeof patch.spinDurationMs === "number" && Number.isFinite(patch.spinDurationMs)) {
-        nextPatch.spin_duration_ms = Math.max(2000, Math.min(12000, Math.round(patch.spinDurationMs)));
+        nextPatch.spin_duration_ms = Math.max(2000, Math.min(180000, Math.round(patch.spinDurationMs)));
       }
 
       const { data, error } = await client
