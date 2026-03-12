@@ -7,6 +7,27 @@ interface GiveawayWheelProps {
   isSpinning: boolean;
 }
 
+function shortenLabel(label: string, maxChars: number): string {
+  const normalized = label.trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+  return `${normalized.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…`;
+}
+
+function getLabelCharsLimit(segmentCount: number): number {
+  if (segmentCount <= 5) {
+    return 18;
+  }
+  if (segmentCount <= 8) {
+    return 12;
+  }
+  if (segmentCount <= 12) {
+    return 9;
+  }
+  return 7;
+}
+
 export function GiveawayWheel({
   segments,
   rotationDeg,
@@ -29,6 +50,7 @@ export function GiveawayWheel({
       return `${segment.color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
     })
     .join(", ");
+  const maxChars = getLabelCharsLimit(segments.length);
 
   return (
     <div className={`giveaway-wheel-shell${isSpinning ? " giveaway-wheel-shell_spinning" : ""}`}>
@@ -43,22 +65,41 @@ export function GiveawayWheel({
           backgroundImage: `conic-gradient(from -90deg, ${gradientStops})`
         }}
       >
-        {segments.map((segment, index) => {
-          const angle = index * segmentSize + segmentSize / 2;
-          return (
-            <span
-              key={segment.giveawayItemId}
-              className="giveaway-wheel-label"
-              style={{
-                transform: `rotate(${angle}deg) translateY(-40%) rotate(-${angle}deg)`
-              }}
-            >
-              {segment.label}
-            </span>
-          );
-        })}
+        <svg className="giveaway-wheel-labels" viewBox="0 0 100 100" aria-hidden>
+          {segments.map((segment, index) => {
+            const angleDeg = index * segmentSize + segmentSize / 2 - 90;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            const x = 50 + Math.cos(angleRad) * 30;
+            const y = 50 + Math.sin(angleRad) * 30;
+            const text = shortenLabel(segment.label, maxChars);
+
+            return (
+              <text
+                key={segment.giveawayItemId}
+                className="giveaway-wheel-label"
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                {text}
+              </text>
+            );
+          })}
+        </svg>
         <div className="giveaway-wheel-center">🎁</div>
+      </div>
+      <div className="giveaway-wheel-legend" aria-label="Лоты на колесе">
+        {segments.map((segment, index) => (
+          <div key={segment.giveawayItemId} className="giveaway-wheel-legend__item">
+            <span className="giveaway-wheel-legend__dot" style={{ backgroundColor: segment.color }} />
+            <small>
+              {index + 1}. {segment.label}
+            </small>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
+

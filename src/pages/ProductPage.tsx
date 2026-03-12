@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { useAppContext } from "../context/AppContext";
 import { buildAcquireLink } from "../lib/acquire-link";
+import { PRODUCT_PLACEHOLDER_IMAGE } from "../lib/placeholders";
 import {
   canViewProduct,
   getProductImages,
@@ -11,9 +12,6 @@ import {
 } from "../lib/product-utils";
 import { openTelegramLink } from "../lib/telegram";
 import type { Product } from "../types/entities";
-
-const fallbackImage =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='480'%3E%3Crect width='100%25' height='100%25' fill='%23ffe6c7'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' font-family='Verdana' font-size='28' fill='%235c3d2e'%3EФото скоро%3C/text%3E%3C/svg%3E";
 
 function getStatusBadges(product: Product): string[] {
   const badges: string[] = [];
@@ -77,7 +75,7 @@ export function ProductPage() {
   }
 
   const images = getProductImages(product.id, state.productImages);
-  const activeImage = images[activeImageIndex]?.url ?? images[0]?.url ?? fallbackImage;
+  const activeImage = images[activeImageIndex]?.url ?? images[0]?.url ?? PRODUCT_PLACEHOLDER_IMAGE;
   const buyLink = buildAcquireLink(state.sellerSettings, product.title);
   const category = state.categories.find((item) => item.id === product.categoryId);
   const recommendations = sortProducts(
@@ -90,7 +88,7 @@ export function ProductPage() {
 
   return (
     <div className="page stack-lg">
-      <section className="card stack">
+      <section className="card stack product-page__hero-card">
         <Link to="/" className="text-link">
           ← Назад
         </Link>
@@ -110,16 +108,19 @@ export function ProductPage() {
               </button>
             ))}
           </div>
-        ) : null}
+        ) : (
+          <small>Дополнительные фото появятся после обновления карточки.</small>
+        )}
       </section>
 
-      <section className="card stack">
+      <section className="card stack product-page__details">
         <div className="product-title-row">
           <h1>{product.title}</h1>
           <button
             type="button"
             className={`icon-button${isFavorite ? " icon-button_active" : ""}`}
             onClick={() => void toggleFavorite(product.id)}
+            aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
           >
             {isFavorite ? "♥" : "♡"}
           </button>
@@ -159,7 +160,7 @@ export function ProductPage() {
           </div>
         </div>
 
-        <div className="toolbar">
+        <div className="toolbar product-page__cta">
           <button
             type="button"
             className="btn btn_primary"
@@ -225,3 +226,4 @@ export function ProductPage() {
     </div>
   );
 }
+

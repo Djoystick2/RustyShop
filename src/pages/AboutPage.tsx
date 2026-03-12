@@ -1,9 +1,9 @@
 import { useMemo } from "react";
+import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { useAppContext } from "../context/AppContext";
 import { buildSellerContactLink } from "../lib/acquire-link";
-import { openTelegramLink } from "../lib/telegram";
-import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { getPrimaryProductImage } from "../lib/product-utils";
+import { openTelegramLink } from "../lib/telegram";
 
 export function AboutPage() {
   const { state } = useAppContext();
@@ -24,7 +24,9 @@ export function AboutPage() {
               alt={state.sellerSettings.sellerName}
             />
           ) : (
-            <div className="about-hero__avatar about-hero__avatar_placeholder" />
+            <div className="about-hero__avatar about-hero__avatar_placeholder" aria-hidden>
+              🧵
+            </div>
           )}
         </div>
         <div className="stack-sm">
@@ -47,6 +49,10 @@ export function AboutPage() {
               Написать мастеру
             </button>
           </div>
+          <div className="about-hero__meta">
+            <span className="chip">@{state.sellerSettings.telegramUsername || "seller"}</span>
+            <span className="chip">{state.sellerSettings.city || "Город не указан"}</span>
+          </div>
         </div>
       </section>
 
@@ -64,10 +70,12 @@ export function AboutPage() {
       <section className="card stack">
         <h2 className="section-title">Контакты</h2>
         <p>{state.sellerSettings.contactText}</p>
-        <small>
-          Telegram: @{state.sellerSettings.telegramUsername || "seller"} · Город:{" "}
-          {state.sellerSettings.city || "не указан"}
-        </small>
+        <div className="about-contact-grid">
+          <small>
+            Telegram: @{state.sellerSettings.telegramUsername || "seller"}
+          </small>
+          <small>Город: {state.sellerSettings.city || "не указан"}</small>
+        </div>
       </section>
 
       <section className="stack">
@@ -92,3 +100,4 @@ export function AboutPage() {
     </div>
   );
 }
+

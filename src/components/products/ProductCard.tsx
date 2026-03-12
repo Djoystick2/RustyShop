@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { buildAcquireLink } from "../../lib/acquire-link";
+import { PRODUCT_PLACEHOLDER_IMAGE } from "../../lib/placeholders";
 import { openTelegramLink } from "../../lib/telegram";
 import type { Product, SellerSettings } from "../../types/entities";
 
@@ -15,9 +16,6 @@ interface ProductCardProps {
   onToggleGiveaway: (productId: string) => void | Promise<void>;
   onToggleFeatured: (productId: string) => void | Promise<void>;
 }
-
-const fallbackImage =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='480'%3E%3Crect width='100%25' height='100%25' fill='%23ffe6c7'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' font-family='Verdana' font-size='28' fill='%235c3d2e'%3EФото скоро%3C/text%3E%3C/svg%3E";
 
 function buildStatusBadges(product: Product): Array<{ key: string; label: string; className: string }> {
   const badges: Array<{ key: string; label: string; className: string }> = [];
@@ -53,7 +51,7 @@ export function ProductCard({
   onToggleFeatured
 }: ProductCardProps) {
   const buyLink = buildAcquireLink(sellerSettings, product.title);
-  const mediaSrc = imageUrl ?? fallbackImage;
+  const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
   const statusBadges = buildStatusBadges(product);
 
   return (
@@ -101,7 +99,9 @@ export function ProductCard({
           </Link>
         </div>
 
-        {product.status === "sold_out" ? <small>Товар продан, но можно заказать похожий.</small> : null}
+        {product.status === "sold_out" ? (
+          <small>Товар продан, но можно заказать похожий.</small>
+        ) : null}
 
         {isAdmin ? (
           <div className="product-card__admin-actions">
@@ -123,3 +123,4 @@ export function ProductCard({
     </article>
   );
 }
+

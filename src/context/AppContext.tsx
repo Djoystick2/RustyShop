@@ -644,7 +644,14 @@ export function AppProvider({ children }: PropsWithChildren) {
         }));
       } catch (error) {
         setState((prev) => ({ ...prev, favorites: state.favorites }));
-        setActionError(mapError(error));
+        const message = mapError(error);
+        const looksLikeAuthFavoriteError =
+          message.toLowerCase().includes("supabase") && message.toLowerCase().includes("telegram");
+        setActionError(
+          looksLikeAuthFavoriteError
+            ? "Чтобы сохранять избранное, откройте Mini App из Telegram-аккаунта."
+            : message
+        );
       }
     },
     [currentProfile, repository, runWithSaving, state.favorites]
