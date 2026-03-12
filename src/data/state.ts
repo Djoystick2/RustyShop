@@ -85,6 +85,7 @@ export interface GiveawaySessionInput {
   title: string;
   description: string;
   drawAt: string;
+  spinDurationMs?: number;
 }
 
 export interface GiveawaySessionPatch {
@@ -92,6 +93,7 @@ export interface GiveawaySessionPatch {
   description?: string;
   drawAt?: string;
   status?: GiveawaySession["status"];
+  spinDurationMs?: number;
 }
 
 export interface GiveawaySpinInput {

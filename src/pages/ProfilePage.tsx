@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { AdminPanel } from "../components/admin/AdminPanel";
 import { useAppContext } from "../context/AppContext";
-import { buildSellerContactLink } from "../lib/acquire-link";
+import { buildSellerContactLink, hasSellerContact } from "../lib/acquire-link";
 import { openTelegramLink } from "../lib/telegram";
 
 const authStatusLabel: Record<string, string> = {
@@ -26,6 +26,12 @@ export function ProfilePage() {
     repositoryKind,
     isSaving
   } = useAppContext();
+
+  const sellerContactLink = buildSellerContactLink(
+    state.sellerSettings,
+    "Здравствуйте! Хочу уточнить детали заказа."
+  );
+  const hasContact = hasSellerContact(state.sellerSettings);
 
   const favoriteProducts = state.products.filter((product) =>
     state.favorites.some(
@@ -70,7 +76,15 @@ export function ProfilePage() {
       {isAdmin ? (
         <>
           <section className="card stack">
-            <h2 className="section-title">Навигация администратора</h2>
+            <h2 className="section-title">Статус / auth</h2>
+            <small>Repository: {repositoryKind}</small>
+            <small>Verify: {authStatusLabel[authVerificationStatus] ?? authVerificationStatus}</small>
+            <small>Telegram ID: {telegramUserId ?? "не определен"}</small>
+            {adminGuardMessage ? <small>{adminGuardMessage}</small> : null}
+          </section>
+
+          <section className="card stack">
+            <h2 className="section-title">Быстрые действия</h2>
             <div className="toolbar">
               <Link to="/" className="btn btn_secondary">
                 Витрина
@@ -85,16 +99,30 @@ export function ProfilePage() {
                 О мастере
               </Link>
             </div>
-            <small>Управление лотами и сессиями перенесено на вкладку «Розыгрыш».</small>
           </section>
 
-          <AdminPanel />
+          <section className="card stack-sm">
+            <h2 className="section-title">Товары / каталог</h2>
+            <p>Создание карточек и базовые флаги товаров управляются в admin hub ниже и на карточках товара.</p>
+          </section>
 
           <section className="card stack-sm">
-            <h3>Служебный статус</h3>
+            <h2 className="section-title">Розыгрыш</h2>
+            <p>Управление лотами, статусом сессии и спином выполняется только на странице розыгрыша.</p>
+            <Link to="/giveaway" className="btn btn_secondary">
+              Открыть управление розыгрышем
+            </Link>
+          </section>
+
+          <section className="card stack">
+            <h2 className="section-title">Бренд-настройки</h2>
+            <AdminPanel />
+          </section>
+
+          <section className="card stack-sm">
+            <h3>Debug / service</h3>
             <small>
-              Telegram bridge: {telegramBridgeInfo.hasBridge ? "найден" : "не найден"} (
-              {telegramBridgeInfo.bridgeSource})
+              Telegram bridge: {telegramBridgeInfo.hasBridge ? "найден" : "не найден"} ({telegramBridgeInfo.bridgeSource})
             </small>
             <small>
               initData: {telegramBridgeInfo.hasInitData ? `есть (${telegramBridgeInfo.initDataSource})` : "нет"} ·
@@ -131,17 +159,22 @@ export function ProfilePage() {
           <section className="card stack">
             <h2 className="section-title">Связь с продавцом</h2>
             <p>{state.sellerSettings.contactText}</p>
-            <button
-              type="button"
-              className="btn btn_primary"
-              onClick={() =>
-                openTelegramLink(
-                  buildSellerContactLink(state.sellerSettings, "Здравствуйте! Хочу уточнить детали заказа.")
-                )
-              }
-            >
-              Написать продавцу
-            </button>
+            {hasContact && sellerContactLink ? (
+              <button
+                type="button"
+                className="btn btn_primary"
+                onClick={() => openTelegramLink(sellerContactLink)}
+              >
+                Написать продавцу
+              </button>
+            ) : (
+              <>
+                <small>Контакты продавца пока не настроены.</small>
+                <Link to="/about" className="btn btn_secondary">
+                  Где найти контакты
+                </Link>
+              </>
+            )}
           </section>
 
           <section className="card stack">

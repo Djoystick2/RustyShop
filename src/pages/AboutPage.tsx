@@ -1,17 +1,24 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { useAppContext } from "../context/AppContext";
-import { buildSellerContactLink } from "../lib/acquire-link";
+import { buildSellerContactLink, hasSellerContact } from "../lib/acquire-link";
 import { getPrimaryProductImage } from "../lib/product-utils";
 import { openTelegramLink } from "../lib/telegram";
 
 export function AboutPage() {
-  const { state } = useAppContext();
+  const { state, isAdmin } = useAppContext();
 
   const featuredProducts = useMemo(
     () => state.products.filter((item) => item.isFeatured && item.isVisible).slice(0, 4),
     [state.products]
   );
+
+  const contactLink = buildSellerContactLink(
+    state.sellerSettings,
+    "Здравствуйте! Хочу обсудить заказ и детали изготовления."
+  );
+  const hasContact = hasSellerContact(state.sellerSettings);
 
   return (
     <div className="page stack-lg">
@@ -33,24 +40,29 @@ export function AboutPage() {
           <p className="hero__eyebrow">О мастере</p>
           <h1>{state.sellerSettings.sellerName}</h1>
           <p>{state.sellerSettings.shortBio || state.sellerSettings.aboutSeller}</p>
-          <div className="toolbar">
-            <button
-              type="button"
-              className="btn btn_primary"
-              onClick={() =>
-                openTelegramLink(
-                  buildSellerContactLink(
-                    state.sellerSettings,
-                    "Здравствуйте! Хочу обсудить заказ и детали изготовления."
-                  )
-                )
-              }
-            >
-              Написать мастеру
-            </button>
-          </div>
+          {!isAdmin ? (
+            <div className="toolbar">
+              {hasContact && contactLink ? (
+                <button
+                  type="button"
+                  className="btn btn_primary"
+                  onClick={() => openTelegramLink(contactLink)}
+                >
+                  Написать мастеру
+                </button>
+              ) : (
+                <Link to="/profile" className="btn btn_secondary">
+                  Контакты пока не настроены
+                </Link>
+              )}
+            </div>
+          ) : null}
           <div className="about-hero__meta">
-            <span className="chip">@{state.sellerSettings.telegramUsername || "seller"}</span>
+            {state.sellerSettings.telegramUsername.trim() ? (
+              <span className="chip">@{state.sellerSettings.telegramUsername.replace("@", "")}</span>
+            ) : (
+              <span className="chip">Telegram не указан</span>
+            )}
             <span className="chip">{state.sellerSettings.city || "Город не указан"}</span>
           </div>
         </div>
@@ -72,7 +84,7 @@ export function AboutPage() {
         <p>{state.sellerSettings.contactText}</p>
         <div className="about-contact-grid">
           <small>
-            Telegram: @{state.sellerSettings.telegramUsername || "seller"}
+            Telegram: {state.sellerSettings.telegramUsername ? `@${state.sellerSettings.telegramUsername.replace("@", "")}` : "не указан"}
           </small>
           <small>Город: {state.sellerSettings.city || "не указан"}</small>
         </div>
@@ -92,6 +104,7 @@ export function AboutPage() {
                 product={product}
                 sellerSettings={state.sellerSettings}
                 imageUrl={getPrimaryProductImage(product.id, state.productImages)}
+                isAdmin={isAdmin}
               />
             ))}
           </div>
@@ -100,4 +113,3 @@ export function AboutPage() {
     </div>
   );
 }
-

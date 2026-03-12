@@ -134,6 +134,7 @@ export function mapGiveawaySession(row: PublicTables["giveaway_sessions"]["Row"]
     description: row.description,
     status: row.status,
     drawAt: row.draw_at,
+    spinDurationMs: row.spin_duration_ms,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

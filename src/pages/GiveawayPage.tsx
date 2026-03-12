@@ -23,6 +23,13 @@ function normalizeSpinDuration(value: string | number): number {
   return Math.max(2, Math.min(12, Math.round(parsed)));
 }
 
+function sessionDurationToSeconds(spinDurationMs: number | null | undefined): number {
+  if (typeof spinDurationMs !== "number" || !Number.isFinite(spinDurationMs)) {
+    return 6;
+  }
+  return normalizeSpinDuration(Math.round(spinDurationMs / 1000));
+}
+
 export function GiveawayPage() {
   const {
     isAdmin,
@@ -87,6 +94,15 @@ export function GiveawayPage() {
   );
 
   const selectedSession = state.giveawaySessions.find((session) => session.id === selectedSessionId) ?? null;
+
+  useEffect(() => {
+    if (!selectedSession) {
+      return;
+    }
+
+    setSpinDurationInput(String(sessionDurationToSeconds(selectedSession.spinDurationMs)));
+  }, [selectedSession?.id, selectedSession?.spinDurationMs]);
+
   const sessionItems = useMemo(
     () => state.giveawayItems.filter((item) => item.sessionId === selectedSession?.id),
     [selectedSession?.id, state.giveawayItems]
@@ -121,6 +137,30 @@ export function GiveawayPage() {
     }
   }, [isSpinning, selectedSession, sessionResults]);
 
+  async function persistSpinDuration(): Promise<boolean> {
+    if (!isAdmin || !selectedSession) {
+      return false;
+    }
+
+    const spinDurationSec = normalizeSpinDuration(spinDurationInput);
+    setSpinDurationInput(String(spinDurationSec));
+    const spinDurationMs = spinDurationSec * 1000;
+
+    if (spinDurationMs === selectedSession.spinDurationMs) {
+      return true;
+    }
+
+    const ok = await updateGiveawaySession(selectedSession.id, {
+      spinDurationMs
+    });
+
+    if (ok) {
+      setNotice("Длительность вращения сохранена.");
+    }
+
+    return ok;
+  }
+
   async function submitSession(event: FormEvent) {
     event.preventDefault();
     if (!sessionForm.title.trim() || !sessionForm.drawAt) {
@@ -128,20 +168,32 @@ export function GiveawayPage() {
     }
 
     setNotice("");
+
     if (sessionForm.id) {
-      await updateGiveawaySession(sessionForm.id, {
+      const ok = await updateGiveawaySession(sessionForm.id, {
         title: sessionForm.title.trim(),
         description: sessionForm.description.trim(),
         drawAt: new Date(sessionForm.drawAt).toISOString(),
         status: sessionForm.status
       });
+
+      if (!ok) {
+        return;
+      }
+
       setNotice("Сессия обновлена.");
     } else {
-      await createGiveawaySession({
+      const ok = await createGiveawaySession({
         title: sessionForm.title.trim(),
         description: sessionForm.description.trim(),
-        drawAt: new Date(sessionForm.drawAt).toISOString()
+        drawAt: new Date(sessionForm.drawAt).toISOString(),
+        spinDurationMs: normalizeSpinDuration(spinDurationInput) * 1000
       });
+
+      if (!ok) {
+        return;
+      }
+
       setNotice("Сессия создана.");
     }
 
@@ -153,7 +205,7 @@ export function GiveawayPage() {
       return;
     }
     if (remainingItems.length === 0) {
-      setNotice("Нельзя запустить сессию без лотов.");
+      setNotice("Нельзя открыть сессию без лотов.");
       return;
     }
 
@@ -161,35 +213,62 @@ export function GiveawayPage() {
     const currentlyActive = state.giveawaySessions.find(
       (session) => session.status === "active" && session.id !== selectedSession.id
     );
+
     if (currentlyActive) {
-      await updateGiveawaySessionStatus(currentlyActive.id, "draft");
+      const demoted = await updateGiveawaySessionStatus(currentlyActive.id, "draft");
+      if (!demoted) {
+        return;
+      }
     }
-    await updateGiveawaySessionStatus(selectedSession.id, "active");
-    setNotice("Сессия переведена в активную.");
+
+    const activated = await updateGiveawaySessionStatus(selectedSession.id, "active");
+    if (activated) {
+      setNotice("Сессия открыта и готова к спину.");
+    }
+  }
+
+  async function handleMoveToDraft() {
+    if (!selectedSession) {
+      return;
+    }
+
+    setNotice("");
+    const ok = await updateGiveawaySessionStatus(selectedSession.id, "draft");
+    if (ok) {
+      setNotice("Сессия переведена в черновик.");
+    }
   }
 
   async function handleFinishSession() {
     if (!selectedSession) {
       return;
     }
+
     setNotice("");
-    await updateGiveawaySessionStatus(selectedSession.id, "completed");
-    setNotice("Сессия завершена.");
+    const ok = await updateGiveawaySessionStatus(selectedSession.id, "completed");
+    if (ok) {
+      setNotice("Сессия завершена.");
+    }
   }
 
   async function handleAddLot() {
     if (!selectedSession || !lotProductId) {
       return;
     }
+
     setNotice("");
-    await attachProductToGiveaway(selectedSession.id, lotProductId);
-    setNotice("Лот добавлен в сессию.");
+    const ok = await attachProductToGiveaway(selectedSession.id, lotProductId);
+    if (ok) {
+      setNotice("Лот добавлен в сессию.");
+    }
   }
 
   async function handleRemoveLot(itemId: string) {
     setNotice("");
-    await removeGiveawayItem(itemId);
-    setNotice("Лот удален из сессии.");
+    const ok = await removeGiveawayItem(itemId);
+    if (ok) {
+      setNotice("Лот удален из сессии.");
+    }
   }
 
   async function handleSpin() {
@@ -201,6 +280,11 @@ export function GiveawayPage() {
       isSaving("giveaway") ||
       wheelSegments.length === 0
     ) {
+      return;
+    }
+
+    const durationSaved = await persistSpinDuration();
+    if (!durationSaved) {
       return;
     }
 
@@ -222,7 +306,7 @@ export function GiveawayPage() {
 
     pendingTimeout.current = window.setTimeout(() => {
       void (async () => {
-        await runGiveawaySpin({
+        const ok = await runGiveawaySpin({
           sessionId: selectedSession.id,
           giveawayItemId: winnerSegment.giveawayItemId,
           productId: winnerSegment.productId,
@@ -230,9 +314,13 @@ export function GiveawayPage() {
           spinDurationMs,
           note: "Wheel spin"
         });
+
         setIsSpinning(false);
-        setWinnerNickname("");
-        setNotice("Спин завершен, результат сохранен.");
+
+        if (ok) {
+          setWinnerNickname("");
+          setNotice("Спин завершен, результат сохранен.");
+        }
       })();
     }, spinDurationMs + 80);
   }
@@ -279,10 +367,43 @@ export function GiveawayPage() {
           </select>
         </label>
         <small>
-          Статус: {sessionStatusLabel[selectedSession.status]} · Дата:{" "}
-          {new Date(selectedSession.drawAt).toLocaleString("ru-RU")}
+          Статус: {sessionStatusLabel[selectedSession.status]} · Дата: {" "}
+          {new Date(selectedSession.drawAt).toLocaleString("ru-RU")} · Длительность: {" "}
+          {sessionDurationToSeconds(selectedSession.spinDurationMs)} сек
         </small>
         <p>{selectedSession.description}</p>
+
+        {isAdmin ? (
+          <div className="toolbar">
+            {selectedSession.status === "active" ? (
+              <button
+                type="button"
+                className="btn btn_secondary"
+                disabled={isSaving("giveaway") || isSpinning}
+                onClick={() => void handleMoveToDraft()}
+              >
+                Вернуть в черновик
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn_primary"
+                disabled={isSaving("giveaway") || isSpinning || remainingItems.length === 0}
+                onClick={() => void handleActivateSession()}
+              >
+                Открыть сессию
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn_secondary"
+              disabled={isSaving("giveaway") || isSpinning || selectedSession.status === "completed"}
+              onClick={() => void handleFinishSession()}
+            >
+              Завершить
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {isAdmin ? (
@@ -357,33 +478,25 @@ export function GiveawayPage() {
                   <button
                     type="button"
                     className="btn btn_secondary"
-                    onClick={() =>
+                    onClick={() => setSelectedSessionId(session.id)}
+                  >
+                    Выбрать
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn_secondary"
+                    onClick={() => {
+                      setSelectedSessionId(session.id);
                       setSessionForm({
                         id: session.id,
                         title: session.title,
                         description: session.description,
                         drawAt: session.drawAt.slice(0, 16),
                         status: session.status
-                      })
-                    }
+                      });
+                    }}
                   >
                     Редактировать
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn_secondary"
-                    disabled={session.id !== selectedSession.id || isSaving("giveaway")}
-                    onClick={() => void handleActivateSession()}
-                  >
-                    Запустить сессию
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn_secondary"
-                    disabled={session.id !== selectedSession.id || isSaving("giveaway")}
-                    onClick={() => void handleFinishSession()}
-                  >
-                    Завершить сессию
                   </button>
                 </div>
               </article>
@@ -428,10 +541,20 @@ export function GiveawayPage() {
                   max={12}
                   value={spinDurationInput}
                   onChange={(event) => setSpinDurationInput(event.target.value)}
-                  onBlur={() => setSpinDurationInput(String(normalizeSpinDuration(spinDurationInput)))}
-                  disabled={isSpinning}
+                  onBlur={() => {
+                    void persistSpinDuration();
+                  }}
+                  disabled={isSpinning || isSaving("giveaway")}
                 />
               </label>
+              <button
+                type="button"
+                className="btn btn_secondary"
+                onClick={() => void persistSpinDuration()}
+                disabled={isSpinning || isSaving("giveaway")}
+              >
+                Сохранить длительность
+              </button>
               <button
                 type="button"
                 className="btn btn_primary"
@@ -446,7 +569,7 @@ export function GiveawayPage() {
                 {isSpinning ? "Вращаем..." : "Запустить спин"}
               </button>
               {selectedSession.status !== "active" ? (
-                <small>Для спина переведите выбранную сессию в статус «Активна».</small>
+                <small>Для спина откройте выбранную сессию.</small>
               ) : null}
             </div>
           ) : (
@@ -454,7 +577,7 @@ export function GiveawayPage() {
           )}
 
           {remainingItems.length === 0 ? (
-            <p className="giveaway-finish">Лоты закончились. Сессия должна быть завершена.</p>
+            <p className="giveaway-finish">Лоты закончились. Сессию можно завершить.</p>
           ) : null}
           {lastResult ? (
             <div className="card giveaway-win">
@@ -493,7 +616,12 @@ export function GiveawayPage() {
             <button
               className="btn btn_secondary"
               type="submit"
-              disabled={!lotProductId || availableProductsForLot.length === 0 || isSaving("giveaway")}
+              disabled={
+                !lotProductId ||
+                availableProductsForLot.length === 0 ||
+                isSaving("giveaway") ||
+                selectedSession.status === "completed"
+              }
             >
               Добавить лот
             </button>

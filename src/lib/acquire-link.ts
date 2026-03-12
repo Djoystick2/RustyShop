@@ -30,6 +30,20 @@ function appendTextQuery(url: string, encodedMessage: string): string {
   return `${url}${separator}text=${encodedMessage}`;
 }
 
+function resolveSellerTelegramLink(seller: SellerSettings): string | null {
+  const directLink = normalizeTelegramLink(seller.telegramLink);
+  if (directLink) {
+    return directLink;
+  }
+
+  const username = seller.telegramUsername.replace("@", "").trim();
+  if (username) {
+    return `https://t.me/${username}`;
+  }
+
+  return null;
+}
+
 function buildPurchaseMessage(template: string, productTitle: string): string {
   const safeTemplate = template.trim();
   if (!safeTemplate) {
@@ -43,35 +57,25 @@ function buildPurchaseMessage(template: string, productTitle: string): string {
   return safeTemplate.replaceAll("{product}", productTitle);
 }
 
-export function buildAcquireLink(seller: SellerSettings, productTitle: string): string {
-  const message = buildPurchaseMessage(seller.purchaseMessageTemplate, productTitle);
-  const encoded = encodeURIComponent(message);
-  const directLink = normalizeTelegramLink(seller.telegramLink);
-
-  if (directLink) {
-    return appendTextQuery(directLink, encoded);
-  }
-
-  const username = seller.telegramUsername.replace("@", "").trim();
-  if (username) {
-    return `https://t.me/${username}?text=${encoded}`;
-  }
-
-  return `https://t.me/share/url?url=&text=${encoded}`;
+export function hasSellerContact(seller: SellerSettings): boolean {
+  return Boolean(resolveSellerTelegramLink(seller));
 }
 
-export function buildSellerContactLink(seller: SellerSettings, message: string): string {
+export function buildAcquireLink(seller: SellerSettings, productTitle: string): string | null {
+  const message = buildPurchaseMessage(seller.purchaseMessageTemplate, productTitle);
   const encoded = encodeURIComponent(message);
-  const directLink = normalizeTelegramLink(seller.telegramLink);
-
-  if (directLink) {
-    return appendTextQuery(directLink, encoded);
+  const targetLink = resolveSellerTelegramLink(seller);
+  if (!targetLink) {
+    return null;
   }
+  return appendTextQuery(targetLink, encoded);
+}
 
-  const username = seller.telegramUsername.replace("@", "").trim();
-  if (username) {
-    return `https://t.me/${username}?text=${encoded}`;
+export function buildSellerContactLink(seller: SellerSettings, message: string): string | null {
+  const encoded = encodeURIComponent(message);
+  const targetLink = resolveSellerTelegramLink(seller);
+  if (!targetLink) {
+    return null;
   }
-
-  return `https://t.me/share/url?url=&text=${encoded}`;
+  return appendTextQuery(targetLink, encoded);
 }

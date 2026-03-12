@@ -49,6 +49,7 @@ export function ProductCard({
   onToggleFeatured
 }: ProductCardProps) {
   const buyLink = buildAcquireLink(sellerSettings, product.title);
+  const canBuyViaTelegram = Boolean(buyLink);
   const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
   const statusBadges = buildStatusBadges(product);
 
@@ -85,14 +86,20 @@ export function ProductCard({
 
         <div className="product-card__actions">
           {!isAdmin ? (
-            <button
-              type="button"
-              className="btn btn_primary"
-              onClick={() => openTelegramLink(buyLink)}
-              disabled={product.status === "sold_out"}
-            >
-              {sellerSettings.purchaseButtonLabel || "Приобрести"}
-            </button>
+            canBuyViaTelegram ? (
+              <button
+                type="button"
+                className="btn btn_primary"
+                onClick={() => openTelegramLink(buyLink!)}
+                disabled={product.status === "sold_out"}
+              >
+                {sellerSettings.purchaseButtonLabel || "Приобрести"}
+              </button>
+            ) : (
+              <Link to="/about" className="btn btn_secondary">
+                Контакты продавца
+              </Link>
+            )
           ) : null}
           <Link to={`/product/${product.id}`} className="btn btn_secondary">
             {isAdmin ? "Открыть управление" : "Подробнее"}

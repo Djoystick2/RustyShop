@@ -19,6 +19,7 @@ export function ProductMiniCard({
 }: ProductMiniCardProps) {
   const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
   const buyLink = buildAcquireLink(sellerSettings, product.title);
+  const canBuyViaTelegram = Boolean(buyLink);
 
   return (
     <article className="mini-product-card">
@@ -36,14 +37,20 @@ export function ProductMiniCard({
         </div>
         <p className="mini-product-card__price">{product.priceText}</p>
         {!isAdmin ? (
-          <button
-            type="button"
-            className="btn btn_secondary"
-            onClick={() => openTelegramLink(buyLink)}
-            disabled={product.status === "sold_out"}
-          >
-            {sellerSettings.purchaseButtonLabel || "Приобрести"}
-          </button>
+          canBuyViaTelegram ? (
+            <button
+              type="button"
+              className="btn btn_secondary"
+              onClick={() => openTelegramLink(buyLink!)}
+              disabled={product.status === "sold_out"}
+            >
+              {sellerSettings.purchaseButtonLabel || "Приобрести"}
+            </button>
+          ) : (
+            <Link to="/about" className="btn btn_secondary">
+              Контакты
+            </Link>
+          )
         ) : (
           <Link to={`/product/${product.id}`} className="btn btn_secondary">
             Открыть

@@ -270,6 +270,7 @@ export interface Database {
           description: string;
           status: Database["public"]["Enums"]["giveaway_session_status"];
           draw_at: string;
+          spin_duration_ms: number;
           created_at: string;
           updated_at: string;
         };
@@ -279,6 +280,7 @@ export interface Database {
           description?: string;
           status?: Database["public"]["Enums"]["giveaway_session_status"];
           draw_at: string;
+          spin_duration_ms?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -288,6 +290,7 @@ export interface Database {
           description?: string;
           status?: Database["public"]["Enums"]["giveaway_session_status"];
           draw_at?: string;
+          spin_duration_ms?: number;
           created_at?: string;
           updated_at?: string;
         };

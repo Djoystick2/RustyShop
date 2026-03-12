@@ -313,6 +313,7 @@ export const fallbackGiveawaySessions: GiveawaySession[] = [
     description: "Розыгрыш уютных подарков для подписчиков.",
     status: "draft",
     drawAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
+    spinDurationMs: 6000,
     createdAt: now,
     updatedAt: now
   }

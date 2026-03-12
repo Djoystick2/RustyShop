@@ -57,7 +57,13 @@ function ensurePayload(): PersistedPayload {
       ...item,
       linkedProductIds: [...item.linkedProductIds]
     })),
-    giveawaySessions: parsed.giveawaySessions ?? fallback.giveawaySessions,
+    giveawaySessions: (parsed.giveawaySessions ?? fallback.giveawaySessions).map((session) => ({
+      ...session,
+      spinDurationMs:
+        typeof session.spinDurationMs === "number" && Number.isFinite(session.spinDurationMs)
+          ? session.spinDurationMs
+          : 6000
+    })),
     giveawayItems: parsed.giveawayItems ?? fallback.giveawayItems,
     giveawayResults: parsed.giveawayResults ?? fallback.giveawayResults
   };
@@ -222,6 +228,10 @@ export function createLocalRepository(): AppRepository {
         description: input.description.trim(),
         status: "draft" as GiveawaySessionStatus,
         drawAt: input.drawAt,
+        spinDurationMs:
+          typeof input.spinDurationMs === "number" && Number.isFinite(input.spinDurationMs)
+            ? Math.max(2000, Math.min(12000, Math.round(input.spinDurationMs)))
+            : 6000,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -239,6 +249,10 @@ export function createLocalRepository(): AppRepository {
       const updated = {
         ...session,
         ...patch,
+        spinDurationMs:
+          typeof patch.spinDurationMs === "number" && Number.isFinite(patch.spinDurationMs)
+            ? Math.max(2000, Math.min(12000, Math.round(patch.spinDurationMs)))
+            : session.spinDurationMs,
         updatedAt: new Date().toISOString()
       };
       payload.giveawaySessions = payload.giveawaySessions.map((item) =>

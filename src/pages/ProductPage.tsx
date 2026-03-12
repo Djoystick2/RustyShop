@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { useAppContext } from "../context/AppContext";
-import { buildAcquireLink } from "../lib/acquire-link";
+import { buildAcquireLink, hasSellerContact } from "../lib/acquire-link";
 import { PRODUCT_PLACEHOLDER_IMAGE } from "../lib/placeholders";
 import {
   canViewProduct,
@@ -76,6 +76,7 @@ export function ProductPage() {
   const images = getProductImages(product.id, state.productImages);
   const activeImage = images[activeImageIndex]?.url ?? images[0]?.url ?? PRODUCT_PLACEHOLDER_IMAGE;
   const buyLink = buildAcquireLink(state.sellerSettings, product.title);
+  const hasContact = hasSellerContact(state.sellerSettings);
   const category = state.categories.find((item) => item.id === product.categoryId);
   const recommendations = sortProducts(
     state.products
@@ -115,14 +116,16 @@ export function ProductPage() {
       <section className="card stack product-page__details">
         <div className="product-title-row">
           <h1>{product.title}</h1>
-          <button
-            type="button"
-            className={`icon-button${isFavorite ? " icon-button_active" : ""}`}
-            onClick={() => void toggleFavorite(product.id)}
-            aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
-          >
-            {isFavorite ? "♥" : "♡"}
-          </button>
+          {!isAdmin ? (
+            <button
+              type="button"
+              className={`icon-button${isFavorite ? " icon-button_active" : ""}`}
+              onClick={() => void toggleFavorite(product.id)}
+              aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+            >
+              {isFavorite ? "♥" : "♡"}
+            </button>
+          ) : null}
         </div>
         <p className="product-price">{product.priceText}</p>
         <div className="badge-row">
@@ -159,55 +162,60 @@ export function ProductPage() {
           </div>
         </div>
 
-        <div className="toolbar product-page__cta">
-          {!isAdmin ? (
-            <button
-              type="button"
-              className="btn btn_primary"
-              onClick={() => openTelegramLink(buyLink)}
-              disabled={product.status === "sold_out"}
-            >
-              {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="btn btn_secondary"
-            onClick={() => void toggleFavorite(product.id)}
-          >
-            {isFavorite ? "Убрать из избранного" : "В избранное"}
-          </button>
-          {isAdmin ? (
-            <Link to="/profile" className="btn btn_secondary">
-              Открыть админ-панель
-            </Link>
-          ) : null}
-        </div>
         {!isAdmin ? (
-          <small>
-            Связь с мастером: @{state.sellerSettings.telegramUsername || "seller"} · {state.sellerSettings.city}
-          </small>
+          <>
+            <div className="toolbar product-page__cta">
+              {buyLink ? (
+                <button
+                  type="button"
+                  className="btn btn_primary"
+                  onClick={() => openTelegramLink(buyLink)}
+                  disabled={product.status === "sold_out"}
+                >
+                  {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
+                </button>
+              ) : (
+                <Link to="/about" className="btn btn_secondary">
+                  Контакты продавца
+                </Link>
+              )}
+              <button
+                type="button"
+                className="btn btn_secondary"
+                onClick={() => void toggleFavorite(product.id)}
+              >
+                {isFavorite ? "Убрать из избранного" : "В избранное"}
+              </button>
+            </div>
+            {hasContact ? (
+              <small>
+                Связь с мастером: @{state.sellerSettings.telegramUsername || "—"} · {state.sellerSettings.city}
+              </small>
+            ) : (
+              <small>Контакты продавца пока не настроены. Откройте раздел «О мастере».</small>
+            )}
+          </>
         ) : (
-          <small>Управление розыгрышем и лотами доступно на вкладке «Розыгрыш».</small>
-        )}
-
-        {isAdmin ? (
-          <div className="toolbar">
-            <button type="button" className="btn btn_ghost" onClick={() => void toggleProductVisibility(product.id)}>
-              {product.isVisible ? "Скрыть товар" : "Показать товар"}
-            </button>
-            <button
-              type="button"
-              className="btn btn_ghost"
-              onClick={() => void toggleProductAvailability(product.id)}
-            >
-              {product.isAvailable ? "Под заказ" : "В наличии"}
-            </button>
-            <button type="button" className="btn btn_ghost" onClick={() => void toggleProductFeatured(product.id)}>
-              {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
-            </button>
+          <div className="card stack-sm">
+            <h3>Admin actions</h3>
+            <div className="toolbar">
+              <button type="button" className="btn btn_ghost" onClick={() => void toggleProductVisibility(product.id)}>
+                {product.isVisible ? "Скрыть товар" : "Показать товар"}
+              </button>
+              <button
+                type="button"
+                className="btn btn_ghost"
+                onClick={() => void toggleProductAvailability(product.id)}
+              >
+                {product.isAvailable ? "Под заказ" : "В наличии"}
+              </button>
+              <button type="button" className="btn btn_ghost" onClick={() => void toggleProductFeatured(product.id)}>
+                {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
+              </button>
+            </div>
+            <small>Управление лотами и статусом сессий выполняется только на странице «Розыгрыш».</small>
           </div>
-        ) : null}
+        )}
       </section>
 
       <section className="stack">

@@ -97,12 +97,12 @@ interface AppContextValue {
   updateStoreSettings: (payload: Partial<StoreSettings>) => Promise<void>;
   updateSellerSettings: (payload: Partial<SellerSettings>) => Promise<void>;
   switchProfile: (profileId: string) => void;
-  createGiveawaySession: (input: GiveawaySessionInput) => Promise<void>;
-  updateGiveawaySession: (sessionId: string, patch: SessionPatchInput) => Promise<void>;
-  updateGiveawaySessionStatus: (sessionId: string, status: GiveawaySessionStatus) => Promise<void>;
-  attachProductToGiveaway: (sessionId: string, productId: string) => Promise<void>;
-  removeGiveawayItem: (itemId: string) => Promise<void>;
-  runGiveawaySpin: (input: SpinInput) => Promise<void>;
+  createGiveawaySession: (input: GiveawaySessionInput) => Promise<boolean>;
+  updateGiveawaySession: (sessionId: string, patch: SessionPatchInput) => Promise<boolean>;
+  updateGiveawaySessionStatus: (sessionId: string, status: GiveawaySessionStatus) => Promise<boolean>;
+  attachProductToGiveaway: (sessionId: string, productId: string) => Promise<boolean>;
+  removeGiveawayItem: (itemId: string) => Promise<boolean>;
+  runGiveawaySpin: (input: SpinInput) => Promise<boolean>;
   canUploadProductImages: boolean;
 }
 
@@ -759,7 +759,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const createGiveawaySession = useCallback(
     async (input: GiveawaySessionInput) => {
       if (!guardAdminAction()) {
-        return;
+        return false;
       }
       setActionError(null);
       try {
@@ -768,8 +768,10 @@ export function AppProvider({ children }: PropsWithChildren) {
           ...prev,
           giveawaySessions: [session, ...prev.giveawaySessions]
         }));
+        return true;
       } catch (error) {
         setActionError(mapError(error));
+        return false;
       }
     },
     [guardAdminAction, repository, runWithSaving]
@@ -778,7 +780,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const updateGiveawaySession = useCallback(
     async (sessionId: string, patch: SessionPatchInput) => {
       if (!guardAdminAction()) {
-        return;
+        return false;
       }
       setActionError(null);
       try {
@@ -791,8 +793,10 @@ export function AppProvider({ children }: PropsWithChildren) {
             session.id === updated.id ? updated : session
           )
         }));
+        return true;
       } catch (error) {
         setActionError(mapError(error));
+        return false;
       }
     },
     [guardAdminAction, repository, runWithSaving]
@@ -801,7 +805,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const updateGiveawaySessionStatus = useCallback(
     async (sessionId: string, status: GiveawaySessionStatus) => {
       if (!guardAdminAction()) {
-        return;
+        return false;
       }
       setActionError(null);
       try {
@@ -814,8 +818,10 @@ export function AppProvider({ children }: PropsWithChildren) {
             session.id === updated.id ? updated : session
           )
         }));
+        return true;
       } catch (error) {
         setActionError(mapError(error));
+        return false;
       }
     },
     [guardAdminAction, repository, runWithSaving]
@@ -824,7 +830,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const attachProductToGiveaway = useCallback(
     async (sessionId: string, productId: string) => {
       if (!guardAdminAction()) {
-        return;
+        return false;
       }
       const existing = state.giveawayItems.find(
         (item) => item.sessionId === sessionId && item.productId === productId
@@ -851,8 +857,10 @@ export function AppProvider({ children }: PropsWithChildren) {
               : [...prev.giveawayItems, saved]
           };
         });
+        return true;
       } catch (error) {
         setActionError(mapError(error));
+        return false;
       }
     },
     [guardAdminAction, repository, runWithSaving, state.giveawayItems]
@@ -861,7 +869,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const removeGiveawayItem = useCallback(
     async (itemId: string) => {
       if (!guardAdminAction()) {
-        return;
+        return false;
       }
       setActionError(null);
       try {
@@ -870,8 +878,10 @@ export function AppProvider({ children }: PropsWithChildren) {
           ...prev,
           giveawayItems: prev.giveawayItems.filter((item) => item.id !== itemId)
         }));
+        return true;
       } catch (error) {
         setActionError(mapError(error));
+        return false;
       }
     },
     [guardAdminAction, repository, runWithSaving]
@@ -880,7 +890,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const runGiveawaySpin = useCallback(
     async (input: SpinInput) => {
       if (!guardAdminAction()) {
-        return;
+        return false;
       }
       setActionError(null);
       try {
@@ -923,8 +933,10 @@ export function AppProvider({ children }: PropsWithChildren) {
             giveawaySessions: nextSessions
           };
         });
+        return true;
       } catch (error) {
         setActionError(mapError(error));
+        return false;
       }
     },
     [currentProfile?.id, guardAdminAction, repository, runWithSaving]

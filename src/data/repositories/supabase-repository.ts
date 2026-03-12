@@ -72,7 +72,7 @@ function isAuthBootstrapError(error: unknown): boolean {
     return false;
   }
 
-  const status = Number(raw.status ?? NaN);
+  const status = Number(raw.status ?? Number.NaN);
   if (status === 401 || status === 403) {
     return true;
   }
@@ -90,15 +90,6 @@ function isAuthBootstrapError(error: unknown): boolean {
     message.includes("row-level security") ||
     message.includes("jwt")
   );
-}
-
-function isNoRowsError(error: unknown): boolean {
-  const raw = error as { code?: string; message?: string } | null;
-  if (!raw) {
-    return false;
-  }
-
-  return raw.code === "PGRST116" || (raw.message ?? "").toLowerCase().includes("0 rows");
 }
 
 function isSingleObjectCoerceError(error: unknown): boolean {
@@ -122,23 +113,70 @@ function isUuid(value: string | null | undefined): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function unwrapSingleRow<T>(
-  data: T | null,
+function assertUuid(value: string | null | undefined, fieldName: string): string {
+  if (!isUuid(value)) {
+    throw new Error(`Invalid ${fieldName}: backend expects UUID.`);
+  }
+  return value as string;
+}
+
+function unwrapOptionalRow(
+  data: any[] | null,
   error: { message: string; code?: string } | null,
   options?: {
-    noRowMessage?: string;
+    context?: string;
+    onMultiple?: "first" | "error";
   }
-): T {
+): any | null {
   if (error) {
-    if (isSingleObjectCoerceError(error) && options?.noRowMessage) {
-      throw new Error(options.noRowMessage);
+    if (isSingleObjectCoerceError(error) && options?.onMultiple === "first") {
+      return data?.[0] ?? null;
     }
     throw new Error(formatDbError(error));
   }
-  if (!data) {
+
+  const rows = data ?? [];
+  if (rows.length === 0) {
+    return null;
+  }
+
+  if (rows.length > 1) {
+    if (options?.onMultiple === "first") {
+      console.warn(
+        `[supabase-repository] Multiple rows returned in ${options.context ?? "single-row query"}, using first row.`
+      );
+      return rows[0];
+    }
+    throw new Error(`Expected one row in ${options?.context ?? "single-row query"}, got ${rows.length}.`);
+  }
+
+  return rows[0];
+}
+
+function unwrapMutationRow(
+  data: any[] | null,
+  error: { message: string; code?: string } | null,
+  options?: {
+    noRowMessage?: string;
+    manyRowsMessage?: string;
+  }
+): any {
+  if (error) {
+    throw new Error(formatDbError(error));
+  }
+
+  const rows = data ?? [];
+  if (rows.length === 0) {
     throw new Error(options?.noRowMessage || "Запись не найдена или недоступна для текущего пользователя.");
   }
-  return data;
+
+  if (rows.length > 1) {
+    throw new Error(
+      options?.manyRowsMessage || `Expected exactly one row from mutation query, got ${rows.length}.`
+    );
+  }
+
+  return rows[0];
 }
 
 async function resolveProfile(client: SupabaseClient, context: BootstrapContext): Promise<Profile | null> {
@@ -150,10 +188,15 @@ async function resolveProfile(client: SupabaseClient, context: BootstrapContext)
       .from("profiles")
       .select("*")
       .eq("auth_user_id", authUserId)
-      .maybeSingle();
+      .limit(2);
 
-    if (!profileByAuth.error && profileByAuth.data) {
-      return mapProfile(profileByAuth.data);
+    const profileRow = unwrapOptionalRow(profileByAuth.data, profileByAuth.error, {
+      context: "profiles by auth_user_id",
+      onMultiple: "first"
+    });
+
+    if (profileRow) {
+      return mapProfile(profileRow);
     }
   }
 
@@ -166,10 +209,15 @@ async function resolveProfile(client: SupabaseClient, context: BootstrapContext)
     .from("profiles")
     .select("*")
     .eq("telegram_user_id", telegramId)
-    .maybeSingle();
+    .limit(2);
 
-  if (!profileByTelegram.error && profileByTelegram.data) {
-    return mapProfile(profileByTelegram.data);
+  const profileRow = unwrapOptionalRow(profileByTelegram.data, profileByTelegram.error, {
+    context: "profiles by telegram_user_id",
+    onMultiple: "first"
+  });
+
+  if (profileRow) {
+    return mapProfile(profileRow);
   }
 
   return null;
@@ -202,8 +250,8 @@ export function createSupabaseRepository(): AppRepository {
         selectOrderedTable(client, "categories", "sort_order"),
         selectOrderedTable(client, "products", "created_at"),
         selectOrderedTable(client, "product_images", "position"),
-        client.from("store_settings").select("*").eq("id", "main").maybeSingle(),
-        client.from("seller_settings").select("*").eq("id", "main").maybeSingle(),
+        client.from("store_settings").select("*").eq("id", "main").limit(2),
+        client.from("seller_settings").select("*").eq("id", "main").limit(2),
         selectOrderedTable(client, "homepage_sections", "sort_order"),
         selectOrderedTable(client, "giveaway_sessions", "created_at"),
         selectOrderedTable(client, "giveaway_items", "created_at"),
@@ -219,18 +267,10 @@ export function createSupabaseRepository(): AppRepository {
       if (productImagesResult.error && !isAuthBootstrapError(productImagesResult.error)) {
         throw new Error(formatDbError(productImagesResult.error));
       }
-      if (
-        storeSettingsResult.error &&
-        !isAuthBootstrapError(storeSettingsResult.error) &&
-        !isNoRowsError(storeSettingsResult.error)
-      ) {
+      if (storeSettingsResult.error && !isAuthBootstrapError(storeSettingsResult.error)) {
         throw new Error(formatDbError(storeSettingsResult.error));
       }
-      if (
-        sellerSettingsResult.error &&
-        !isAuthBootstrapError(sellerSettingsResult.error) &&
-        !isNoRowsError(sellerSettingsResult.error)
-      ) {
+      if (sellerSettingsResult.error && !isAuthBootstrapError(sellerSettingsResult.error)) {
         throw new Error(formatDbError(sellerSettingsResult.error));
       }
       if (homepageSectionsResult.error && !isAuthBootstrapError(homepageSectionsResult.error)) {
@@ -247,8 +287,9 @@ export function createSupabaseRepository(): AppRepository {
       }
 
       const activeProfile = profile ?? buildGuestProfile(context);
+
       let favorites = fallback.favorites;
-      if (profile) {
+      if (profile && isUuid(profile.id)) {
         const favoritesResult = await client
           .from("favorites")
           .select("*")
@@ -264,6 +305,19 @@ export function createSupabaseRepository(): AppRepository {
         favorites = [];
       }
 
+      const storeSettingsRow = storeSettingsResult.error
+        ? null
+        : unwrapOptionalRow(storeSettingsResult.data, null, {
+            context: "store_settings main",
+            onMultiple: "first"
+          });
+      const sellerSettingsRow = sellerSettingsResult.error
+        ? null
+        : unwrapOptionalRow(sellerSettingsResult.data, null, {
+            context: "seller_settings main",
+            onMultiple: "first"
+          });
+
       return {
         activeProfileId: activeProfile.id,
         profiles: [activeProfile],
@@ -275,14 +329,8 @@ export function createSupabaseRepository(): AppRepository {
           ? fallback.productImages
           : (productImagesResult.data ?? []).map(mapProductImage),
         favorites,
-        storeSettings:
-          storeSettingsResult.error || !storeSettingsResult.data
-            ? fallback.storeSettings
-            : mapStoreSettings(storeSettingsResult.data),
-        sellerSettings:
-          sellerSettingsResult.error || !sellerSettingsResult.data
-            ? fallback.sellerSettings
-            : mapSellerSettings(sellerSettingsResult.data),
+        storeSettings: storeSettingsRow ? mapStoreSettings(storeSettingsRow) : fallback.storeSettings,
+        sellerSettings: sellerSettingsRow ? mapSellerSettings(sellerSettingsRow) : fallback.sellerSettings,
         homepageSections: homepageSectionsResult.error
           ? fallback.homepageSections
           : (homepageSectionsResult.data ?? []).map(mapHomepageSection),
@@ -315,58 +363,75 @@ export function createSupabaseRepository(): AppRepository {
     },
     async upsertCategory(category) {
       const client = assertClient();
+      const categoryId = assertUuid(category.id, "category.id");
       const { data, error } = await client
         .from("categories")
-        .upsert(toCategoryInsert(category))
-        .select("*")
-        .maybeSingle();
+        .upsert(
+          toCategoryInsert({
+            ...category,
+            id: categoryId
+          })
+        )
+        .select("*");
 
       return mapCategory(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Категория не сохранена: запись недоступна или не создана."
         })
       );
     },
     async upsertHomepageSection(section) {
       const client = assertClient();
+      const sectionId = assertUuid(section.id, "homepageSection.id");
+      const safeLinkedCategoryId = isUuid(section.linkedCategoryId) ? section.linkedCategoryId : null;
+      const safeLinkedProductIds = section.linkedProductIds.filter((id) => isUuid(id));
+
       const { data, error } = await client
         .from("homepage_sections")
         .upsert({
-          id: section.id,
+          id: sectionId,
           section_type: section.type,
           title: section.title,
           subtitle: section.subtitle,
           content: section.content,
-          linked_category_id: section.linkedCategoryId,
-          linked_product_ids: section.linkedProductIds,
+          linked_category_id: safeLinkedCategoryId,
+          linked_product_ids: safeLinkedProductIds,
           is_enabled: section.isEnabled,
           sort_order: section.sortOrder
         })
-        .select("*")
-        .maybeSingle();
+        .select("*");
 
       return mapHomepageSection(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Секция витрины не сохранена: запись недоступна или не создана."
         })
       );
     },
     async deleteHomepageSection(sectionId: string) {
       const client = assertClient();
-      const { error } = await client.from("homepage_sections").delete().eq("id", sectionId);
+      const safeSectionId = assertUuid(sectionId, "homepageSection.id");
+      const { error } = await client.from("homepage_sections").delete().eq("id", safeSectionId);
       if (error) {
         throw new Error(formatDbError(error));
       }
     },
     async upsertProduct({ product, imageUrls }) {
       const client = assertClient();
+      const productId = assertUuid(product.id, "product.id");
+      const categoryId = assertUuid(product.categoryId, "product.categoryId");
+
       const { data, error } = await client
         .from("products")
-        .upsert(toProductInsert(product))
-        .select("*")
-        .maybeSingle();
+        .upsert(
+          toProductInsert({
+            ...product,
+            id: productId,
+            categoryId
+          })
+        )
+        .select("*");
 
-      const savedProduct = unwrapSingleRow(data, error, {
+      const savedProduct = unwrapMutationRow(data, error, {
         noRowMessage: "Товар не сохранен: запись недоступна или не создана."
       });
 
@@ -408,6 +473,7 @@ export function createSupabaseRepository(): AppRepository {
     },
     async updateProductFlags(productId, patch) {
       const client = assertClient();
+      const safeProductId = assertUuid(productId, "product.id");
       const { data, error } = await client
         .from("products")
         .update({
@@ -416,12 +482,11 @@ export function createSupabaseRepository(): AppRepository {
           is_giveaway_eligible: patch.isGiveawayEligible,
           is_featured: patch.isFeatured
         })
-        .eq("id", productId)
-        .select("*")
-        .maybeSingle();
+        .eq("id", safeProductId)
+        .select("*");
 
       return mapProduct(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Не удалось изменить товар: он не найден или нет прав на обновление."
         })
       );
@@ -432,13 +497,9 @@ export function createSupabaseRepository(): AppRepository {
         id: "main",
         ...toStoreSettingsPatch(patch)
       };
-      const { data, error } = await client
-        .from("store_settings")
-        .upsert(payload)
-        .select("*")
-        .maybeSingle();
+      const { data, error } = await client.from("store_settings").upsert(payload).select("*");
       return mapStoreSettings(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Настройки магазина не сохранены: запись недоступна или нет прав."
         })
       );
@@ -449,13 +510,9 @@ export function createSupabaseRepository(): AppRepository {
         id: "main",
         ...toSellerSettingsPatch(patch)
       };
-      const { data, error } = await client
-        .from("seller_settings")
-        .upsert(payload)
-        .select("*")
-        .maybeSingle();
+      const { data, error } = await client.from("seller_settings").upsert(payload).select("*");
       return mapSellerSettings(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Настройки продавца не сохранены: запись недоступна или нет прав."
         })
       );
@@ -463,14 +520,17 @@ export function createSupabaseRepository(): AppRepository {
     async setFavorite({ profileId, productId, isFavorite }) {
       const client = assertClient();
 
-      if (profileId.startsWith("guest_")) {
-        throw new Error("Избранное в Supabase режиме доступно после Telegram авторизации.");
+      if (profileId.startsWith("guest_") || !isUuid(profileId)) {
+        throw new Error("FAVORITES_AUTH_REQUIRED");
       }
+
+      const safeProfileId = assertUuid(profileId, "favorite.profileId");
+      const safeProductId = assertUuid(productId, "favorite.productId");
 
       if (isFavorite) {
         const insertResult = await client
           .from("favorites")
-          .upsert({ profile_id: profileId, product_id: productId });
+          .upsert({ profile_id: safeProfileId, product_id: safeProductId });
         if (insertResult.error) {
           throw new Error(formatDbError(insertResult.error));
         }
@@ -478,8 +538,8 @@ export function createSupabaseRepository(): AppRepository {
         const deleteResult = await client
           .from("favorites")
           .delete()
-          .eq("profile_id", profileId)
-          .eq("product_id", productId);
+          .eq("profile_id", safeProfileId)
+          .eq("product_id", safeProductId);
         if (deleteResult.error) {
           throw new Error(formatDbError(deleteResult.error));
         }
@@ -488,7 +548,7 @@ export function createSupabaseRepository(): AppRepository {
       const { data, error } = await client
         .from("favorites")
         .select("*")
-        .eq("profile_id", profileId)
+        .eq("profile_id", safeProfileId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -499,12 +559,13 @@ export function createSupabaseRepository(): AppRepository {
     },
     async uploadProductImages({ productId, files }) {
       const client = assertClient();
+      const safeProductId = assertUuid(productId, "product.id");
       const bucket = getStorageBucketName();
 
       const existingImages = await client
         .from("product_images")
         .select("*")
-        .eq("product_id", productId)
+        .eq("product_id", safeProductId)
         .order("position", { ascending: true });
 
       if (existingImages.error) {
@@ -521,9 +582,10 @@ export function createSupabaseRepository(): AppRepository {
         is_primary: boolean;
         position: number;
       }> = [];
+
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
-        const path = `${productId}/${Date.now()}_${index}_${file.name.replace(/\s+/g, "_")}`;
+        const path = `${safeProductId}/${Date.now()}_${index}_${file.name.replace(/\s+/g, "_")}`;
         const uploadResult = await client.storage.from(bucket).upload(path, file, {
           upsert: false,
           contentType: file.type || undefined
@@ -536,7 +598,7 @@ export function createSupabaseRepository(): AppRepository {
         const urlResult = client.storage.from(bucket).getPublicUrl(path);
         rows.push({
           id: createUuid(),
-          product_id: productId,
+          product_id: safeProductId,
           url: urlResult.data.publicUrl,
           storage_path: path,
           is_primary: existingImages.data.length === 0 && index === 0,
@@ -554,7 +616,7 @@ export function createSupabaseRepository(): AppRepository {
       const refreshed = await client
         .from("product_images")
         .select("*")
-        .eq("product_id", productId)
+        .eq("product_id", safeProductId)
         .order("position", { ascending: true });
 
       if (refreshed.error) {
@@ -565,137 +627,162 @@ export function createSupabaseRepository(): AppRepository {
     },
     async createGiveawaySession(input: GiveawaySessionInput) {
       const client = assertClient();
+      const spinDurationMs =
+        typeof input.spinDurationMs === "number" && Number.isFinite(input.spinDurationMs)
+          ? Math.max(2000, Math.min(12000, Math.round(input.spinDurationMs)))
+          : 6000;
+
       const { data, error } = await client
         .from("giveaway_sessions")
         .insert({
           title: input.title.trim(),
           description: input.description.trim(),
           draw_at: input.drawAt,
-          status: "draft"
+          status: "draft",
+          spin_duration_ms: spinDurationMs
         })
-        .select("*")
-        .maybeSingle();
+        .select("*");
 
       return mapGiveawaySession(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Сессия розыгрыша не создана: нет прав или запись недоступна."
         })
       );
     },
     async updateGiveawaySession(sessionId: string, patch: GiveawaySessionPatch) {
       const client = assertClient();
+      const safeSessionId = assertUuid(sessionId, "giveawaySession.id");
+
+      const nextPatch: Record<string, unknown> = {
+        title: patch.title,
+        description: patch.description,
+        draw_at: patch.drawAt,
+        status: patch.status
+      };
+
+      if (typeof patch.spinDurationMs === "number" && Number.isFinite(patch.spinDurationMs)) {
+        nextPatch.spin_duration_ms = Math.max(2000, Math.min(12000, Math.round(patch.spinDurationMs)));
+      }
+
       const { data, error } = await client
         .from("giveaway_sessions")
-        .update({
-          title: patch.title,
-          description: patch.description,
-          draw_at: patch.drawAt,
-          status: patch.status
-        })
-        .eq("id", sessionId)
-        .select("*")
-        .maybeSingle();
+        .update(nextPatch)
+        .eq("id", safeSessionId)
+        .select("*");
 
       return mapGiveawaySession(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Сессия розыгрыша не обновлена: запись не найдена или нет прав."
         })
       );
     },
     async updateGiveawaySessionStatus(sessionId, status) {
       const client = assertClient();
+      const safeSessionId = assertUuid(sessionId, "giveawaySession.id");
       const { data, error } = await client
         .from("giveaway_sessions")
         .update({ status })
-        .eq("id", sessionId)
-        .select("*")
-        .maybeSingle();
+        .eq("id", safeSessionId)
+        .select("*");
 
       return mapGiveawaySession(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Статус сессии не обновлен: запись не найдена или нет прав."
         })
       );
     },
     async saveGiveawayItem(item) {
       const client = assertClient();
+      const safeItemId = assertUuid(item.id, "giveawayItem.id");
+      const safeSessionId = assertUuid(item.sessionId, "giveawayItem.sessionId");
+      const safeProductId = assertUuid(item.productId, "giveawayItem.productId");
+
       const { data, error } = await client
         .from("giveaway_items")
         .upsert(
           {
-            id: item.id,
-            session_id: item.sessionId,
-            product_id: item.productId,
+            id: safeItemId,
+            session_id: safeSessionId,
+            product_id: safeProductId,
             slots: item.slots,
             is_active: item.isActive
           },
           { onConflict: "session_id,product_id" }
         )
-        .select("*")
-        .maybeSingle();
+        .select("*");
 
       return mapGiveawayItem(
-        unwrapSingleRow(data, error, {
+        unwrapMutationRow(data, error, {
           noRowMessage: "Лот не сохранен: запись недоступна или нет прав."
         })
       );
     },
     async removeGiveawayItem(itemId: string) {
       const client = assertClient();
-      const { error } = await client.from("giveaway_items").delete().eq("id", itemId);
+      const safeItemId = assertUuid(itemId, "giveawayItem.id");
+      const { error } = await client.from("giveaway_items").delete().eq("id", safeItemId);
       if (error) {
         throw new Error(formatDbError(error));
       }
     },
     async createGiveawayResult(input) {
       const client = assertClient();
+      const safeSessionId = assertUuid(input.sessionId, "giveawayResult.sessionId");
+      const safeProductId = assertUuid(input.productId, "giveawayResult.productId");
+      const safeGiveawayItemId = assertUuid(input.giveawayItemId, "giveawayResult.giveawayItemId");
       const safeProfileId = isUuid(input.profileId) ? input.profileId : null;
+
       const insertResult = await client
         .from("giveaway_results")
         .insert({
           id: createUuid(),
-          session_id: input.sessionId,
-          product_id: input.productId,
+          session_id: safeSessionId,
+          product_id: safeProductId,
           profile_id: safeProfileId,
           winner_nickname: input.winnerNickname,
           spin_duration_ms: input.spinDurationMs,
           note: input.note?.trim() || ""
         })
-        .select("*")
-        .maybeSingle();
+        .select("*");
 
-      const resultRow = unwrapSingleRow(insertResult.data, insertResult.error, {
+      const resultRow = unwrapMutationRow(insertResult.data, insertResult.error, {
         noRowMessage: "Результат розыгрыша не сохранен: нет прав или запись не создана."
       });
 
-      let updatedItem: ReturnType<typeof mapGiveawayItem> | null = null;
       const itemResult = await client
         .from("giveaway_items")
         .update({ is_active: false })
-        .eq("id", input.giveawayItemId)
-        .select("*")
-        .maybeSingle();
+        .eq("id", safeGiveawayItemId)
+        .select("*");
 
-      if (!itemResult.error && itemResult.data) {
-        updatedItem = mapGiveawayItem(itemResult.data);
-      }
+      const itemRow = unwrapMutationRow(itemResult.data, itemResult.error, {
+        noRowMessage: "Лот не обновлен после спина: запись не найдена или недоступна."
+      });
 
       const remainingResult = await client
         .from("giveaway_items")
         .select("id")
-        .eq("session_id", input.sessionId)
+        .eq("session_id", safeSessionId)
         .eq("is_active", true);
 
-      if (!remainingResult.error && (remainingResult.data?.length ?? 0) === 0) {
-        await client
+      if (remainingResult.error) {
+        throw new Error(formatDbError(remainingResult.error));
+      }
+
+      if ((remainingResult.data?.length ?? 0) === 0) {
+        const completeResult = await client
           .from("giveaway_sessions")
           .update({ status: "completed" })
-          .eq("id", input.sessionId);
+          .eq("id", safeSessionId);
+
+        if (completeResult.error) {
+          throw new Error(formatDbError(completeResult.error));
+        }
       }
 
       return {
         result: mapGiveawayResult(resultRow),
-        updatedItem
+        updatedItem: mapGiveawayItem(itemRow)
       };
     },
     async listGiveawayResults() {

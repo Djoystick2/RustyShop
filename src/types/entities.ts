@@ -114,6 +114,7 @@ export interface GiveawaySession {
   description: string;
   status: GiveawaySessionStatus;
   drawAt: string;
+  spinDurationMs: number;
   createdAt: string;
   updatedAt: string;
 }

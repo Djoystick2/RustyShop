@@ -29,6 +29,7 @@
    - `202603120002_giveaway_results_spin_fields.sql`
    - `202603120003_brand_homepage_sections.sql`
    - `202603120004_runtime_readiness_fixes.sql`
+   - `202603120005_giveaway_session_spin_duration.sql`
 3. Опционально примените `supabase/seed.sql` для smoke-test данных.
 
 ## 3. Проверьте storage
@@ -57,4 +58,3 @@
 
 - при `VITE_ENABLE_LOCAL_FALLBACK=true` включается localStorage mode;
 - при `VITE_ENABLE_LOCAL_FALLBACK=false` приложение показывает явную runtime-конфиг ошибку.
-
