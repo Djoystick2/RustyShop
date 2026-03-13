@@ -39,6 +39,7 @@ export interface AppRepository {
     context: BootstrapContext
   ): Promise<{ activeProfileId: string; profiles: Profile[] }>;
   upsertCategory(category: Category): Promise<Category>;
+  deleteCategory(categoryId: string): Promise<void>;
   upsertHomepageSection(section: HomepageSection): Promise<HomepageSection>;
   deleteHomepageSection(sectionId: string): Promise<void>;
   upsertProduct(payload: UpsertProductPayload): Promise<{ product: Product; productImages: ProductImage[] }>;

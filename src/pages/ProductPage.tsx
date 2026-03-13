@@ -138,6 +138,7 @@ export function ProductPage() {
 
             <div className="product-page__price-row">
               <p className="product-price">{product.priceText}</p>
+              {product.sku ? <span className="badge badge_soft">SKU: {product.sku}</span> : null}
               {!product.isVisible ? <span className="badge badge_soft">Скрытый товар</span> : null}
             </div>
 

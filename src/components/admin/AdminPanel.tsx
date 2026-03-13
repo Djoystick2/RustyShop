@@ -4,6 +4,7 @@ import { useAppContext } from "../../context/AppContext";
 import type { ProductInput } from "../../data/state";
 import { listProductsAvailableForGiveawaySession } from "../../domain/giveaway/wheel";
 import { buildAcquireLink } from "../../lib/acquire-link";
+import { getCategoryLabel, sortCategories } from "../../lib/catalog";
 import { PRODUCT_PLACEHOLDER_IMAGE } from "../../lib/placeholders";
 import { getPrimaryProductImage, getProductImages, sortProducts } from "../../lib/product-utils";
 import { openTelegramLink } from "../../lib/telegram";
@@ -15,6 +16,7 @@ type ProductListFilter = "all" | "visible" | "hidden" | "featured" | "giveaway";
 interface ProductFormState {
   id: string;
   categoryId: string;
+  sku: string;
   title: string;
   description: string;
   priceText: string;
@@ -106,6 +108,7 @@ function createEmptyProductForm(defaultCategoryId: string): ProductFormState {
   return {
     id: "",
     categoryId: defaultCategoryId,
+    sku: "",
     title: "",
     description: "",
     priceText: "",
@@ -123,6 +126,7 @@ function buildProductForm(product: Product, imageUrls: string[]): ProductFormSta
   return {
     id: product.id,
     categoryId: product.categoryId,
+    sku: product.sku,
     title: product.title,
     description: product.description,
     priceText: product.priceText,
@@ -164,7 +168,7 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
   } = useAppContext();
 
   const categories = useMemo(
-    () => [...state.categories].sort((first, second) => first.sortOrder - second.sortOrder),
+    () => sortCategories(state.categories),
     [state.categories]
   );
   const defaultCategoryId = categories[0]?.id ?? "";
@@ -306,13 +310,13 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
           return true;
         }
 
-        const categoryName =
-          state.categories.find((category) => category.id === product.categoryId)?.name.toLowerCase() ?? "";
+        const categoryName = getCategoryLabel(state.categories, product.categoryId).toLowerCase();
 
         return (
           product.title.toLowerCase().includes(normalizedQuery) ||
           product.description.toLowerCase().includes(normalizedQuery) ||
-          categoryName.includes(normalizedQuery)
+          categoryName.includes(normalizedQuery) ||
+          product.sku.toLowerCase().includes(normalizedQuery)
         );
       }),
       "newest"
@@ -350,6 +354,7 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
     const payload: ProductInput = {
       id: productForm.id || undefined,
       categoryId: productForm.categoryId,
+      sku: productForm.sku,
       title: productForm.title,
       description: productForm.description,
       priceText: productForm.priceText,
@@ -559,10 +564,18 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
                     >
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>
-                          {category.name}
+                          {category.parentCategoryId ? `— ${getCategoryLabel(state.categories, category.id)}` : category.name}
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label className="field">
+                    <span>SKU / артикул</span>
+                    <input
+                      value={productForm.sku}
+                      onChange={(event) => setProductForm((prev) => ({ ...prev, sku: event.target.value }))}
+                      placeholder="Например: CNDL-LUNA-001"
+                    />
                   </label>
                   <label className="field">
                     <span>Цена</span>

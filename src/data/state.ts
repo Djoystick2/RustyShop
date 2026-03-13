@@ -59,6 +59,7 @@ export interface BootstrapPayload {
 export interface ProductInput {
   id?: string;
   categoryId: string;
+  sku: string;
   title: string;
   description: string;
   priceText: string;
@@ -74,9 +75,13 @@ export interface ProductInput {
 
 export interface CategoryInput {
   id?: string;
+  slug: string;
+  parentCategoryId: string | null;
   name: string;
   description: string;
   emoji: string;
+  imageUrl: string;
+  bannerUrl: string;
   sortOrder: number;
   isVisible: boolean;
 }

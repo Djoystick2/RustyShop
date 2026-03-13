@@ -75,7 +75,10 @@ export function HomepageSectionRenderer({
   if (section.type === "hero") {
     return (
       <section className="card hero hero_showcase">
-        <HeroBanner />
+        <HeroBanner
+          imageUrl={storeSettings.heroImageUrl}
+          alt={storeSettings.storeName || "РЇСЂРјР°СЂРєР° Rusty"}
+        />
         <p className="hero__eyebrow">{storeSettings.heroBadge || "Ручная работа"}</p>
         <h1>
           {storeSettings.mascotEmoji ? `${storeSettings.mascotEmoji} ` : ""}

@@ -29,9 +29,13 @@ export function mapProfile(row: PublicTables["profiles"]["Row"]): Profile {
 export function mapCategory(row: PublicTables["categories"]["Row"]): Category {
   return {
     id: row.id,
+    slug: row.slug ?? "",
+    parentCategoryId: row.parent_category_id,
     name: row.name,
     description: row.description,
     emoji: row.emoji,
+    imageUrl: row.image_url,
+    bannerUrl: row.banner_url,
     sortOrder: row.sort_order,
     isVisible: row.is_visible
   };
@@ -41,6 +45,7 @@ export function mapProduct(row: PublicTables["products"]["Row"]): Product {
   return {
     id: row.id,
     categoryId: row.category_id,
+    sku: row.sku,
     title: row.title,
     description: row.description,
     priceText: row.price_text,
@@ -80,6 +85,7 @@ export function mapStoreSettings(row: PublicTables["store_settings"]["Row"]): St
     storeName: row.store_name,
     brandSlogan: row.brand_slogan,
     heroBadge: row.hero_badge,
+    heroImageUrl: row.hero_image_url,
     mascotEmoji: row.mascot_emoji,
     storeDescription: row.store_description,
     welcomeText: row.welcome_text,
@@ -166,9 +172,13 @@ export function mapGiveawayResult(row: PublicTables["giveaway_results"]["Row"]):
 export function toCategoryInsert(category: Category): PublicTables["categories"]["Insert"] {
   return {
     id: category.id,
+    slug: category.slug || null,
+    parent_category_id: category.parentCategoryId,
     name: category.name,
     description: category.description,
     emoji: category.emoji,
+    image_url: category.imageUrl,
+    banner_url: category.bannerUrl,
     sort_order: category.sortOrder,
     is_visible: category.isVisible
   };
@@ -178,6 +188,7 @@ export function toProductInsert(product: Product): PublicTables["products"]["Ins
   return {
     id: product.id,
     category_id: product.categoryId,
+    sku: product.sku,
     title: product.title,
     description: product.description,
     price_text: product.priceText,
@@ -197,6 +208,7 @@ export function toStoreSettingsPatch(
     store_name: patch.storeName,
     brand_slogan: patch.brandSlogan,
     hero_badge: patch.heroBadge,
+    hero_image_url: patch.heroImageUrl,
     mascot_emoji: patch.mascotEmoji,
     store_description: patch.storeDescription,
     welcome_text: patch.welcomeText,

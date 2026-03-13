@@ -42,9 +42,12 @@ export interface Database {
         Row: {
           id: string;
           slug: string | null;
+          parent_category_id: string | null;
           name: string;
           description: string;
           emoji: string;
+          image_url: string;
+          banner_url: string;
           sort_order: number;
           is_visible: boolean;
           created_at: string;
@@ -53,9 +56,12 @@ export interface Database {
         Insert: {
           id?: string;
           slug?: string | null;
+          parent_category_id?: string | null;
           name: string;
           description?: string;
           emoji?: string;
+          image_url?: string;
+          banner_url?: string;
           sort_order?: number;
           is_visible?: boolean;
           created_at?: string;
@@ -64,9 +70,12 @@ export interface Database {
         Update: {
           id?: string;
           slug?: string | null;
+          parent_category_id?: string | null;
           name?: string;
           description?: string;
           emoji?: string;
+          image_url?: string;
+          banner_url?: string;
           sort_order?: number;
           is_visible?: boolean;
           created_at?: string;
@@ -77,6 +86,7 @@ export interface Database {
         Row: {
           id: string;
           category_id: string;
+          sku: string;
           title: string;
           description: string;
           price_text: string;
@@ -92,6 +102,7 @@ export interface Database {
         Insert: {
           id?: string;
           category_id: string;
+          sku?: string;
           title: string;
           description?: string;
           price_text?: string;
@@ -107,6 +118,7 @@ export interface Database {
         Update: {
           id?: string;
           category_id?: string;
+          sku?: string;
           title?: string;
           description?: string;
           price_text?: string;
@@ -172,6 +184,7 @@ export interface Database {
           store_name: string;
           brand_slogan: string;
           hero_badge: string;
+          hero_image_url: string;
           mascot_emoji: string;
           store_description: string;
           welcome_text: string;
@@ -186,6 +199,7 @@ export interface Database {
           store_name?: string;
           brand_slogan?: string;
           hero_badge?: string;
+          hero_image_url?: string;
           mascot_emoji?: string;
           store_description?: string;
           welcome_text?: string;
@@ -200,6 +214,7 @@ export interface Database {
           store_name?: string;
           brand_slogan?: string;
           hero_badge?: string;
+          hero_image_url?: string;
           mascot_emoji?: string;
           store_description?: string;
           welcome_text?: string;

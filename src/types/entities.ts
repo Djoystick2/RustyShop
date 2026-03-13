@@ -24,6 +24,7 @@ export interface Profile {
 export interface Product {
   id: string;
   categoryId: string;
+  sku: string;
   title: string;
   description: string;
   priceText: string;
@@ -47,9 +48,13 @@ export interface ProductImage {
 
 export interface Category {
   id: string;
+  slug: string;
+  parentCategoryId: string | null;
   name: string;
   description: string;
   emoji: string;
+  imageUrl: string;
+  bannerUrl: string;
   sortOrder: number;
   isVisible: boolean;
 }
@@ -66,6 +71,7 @@ export interface StoreSettings {
   storeName: string;
   brandSlogan: string;
   heroBadge: string;
+  heroImageUrl: string;
   mascotEmoji: string;
   storeDescription: string;
   welcomeText: string;

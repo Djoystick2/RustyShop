@@ -22,6 +22,9 @@ export function createUnavailableRepository(message: string): AppRepository {
     async upsertCategory(_: Category) {
       fail(message);
     },
+    async deleteCategory() {
+      fail(message);
+    },
     async upsertHomepageSection(_: HomepageSection) {
       fail(message);
     },

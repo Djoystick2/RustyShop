@@ -46,12 +46,19 @@ function ensurePayload(): PersistedPayload {
     profiles: parsed.profiles ?? fallback.profiles,
     products: (parsed.products ?? fallback.products).map((product) => ({
       ...product,
+      sku: product.sku ?? "",
       isFeatured: product.isFeatured ?? false
     })),
     productImages: parsed.productImages ?? fallback.productImages,
-    categories: parsed.categories ?? fallback.categories,
+    categories: (parsed.categories ?? fallback.categories).map((category) => ({
+      ...category,
+      slug: category.slug ?? "",
+      parentCategoryId: category.parentCategoryId ?? null,
+      imageUrl: category.imageUrl ?? "",
+      bannerUrl: category.bannerUrl ?? ""
+    })),
     favorites: parsed.favorites ?? fallback.favorites,
-    storeSettings: { ...fallback.storeSettings, ...parsed.storeSettings },
+    storeSettings: { ...fallback.storeSettings, ...parsed.storeSettings, heroImageUrl: parsed.storeSettings?.heroImageUrl ?? fallback.storeSettings.heroImageUrl },
     sellerSettings: { ...fallback.sellerSettings, ...parsed.sellerSettings },
     homepageSections: (parsed.homepageSections ?? fallback.homepageSections).map((item) => ({
       ...item,
@@ -109,6 +116,30 @@ function buildGiveawayResult(input: GiveawaySpinInput & { profileId: string | nu
   };
 }
 
+function buildCategoryDeleteError(payload: PersistedPayload, categoryId: string): string | null {
+  const category = payload.categories.find((item) => item.id === categoryId);
+  if (!category) {
+    return "РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.";
+  }
+
+  const childCount = payload.categories.filter((item) => item.parentCategoryId === categoryId).length;
+  if (childCount > 0) {
+    return "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° Сѓ РЅРµС‘ РµСЃС‚СЊ РїРѕРґРєР°С‚РµРіРѕСЂРёРё.";
+  }
+
+  const productCount = payload.products.filter((item) => item.categoryId === categoryId).length;
+  if (productCount > 0) {
+    return "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° Рє РЅРµР№ РїСЂРёРІСЏР·Р°РЅС‹ С‚РѕРІР°СЂС‹.";
+  }
+
+  const linkedSections = payload.homepageSections.filter((item) => item.linkedCategoryId === categoryId).length;
+  if (linkedSections > 0) {
+    return "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° РѕРЅР° РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ storefront-СЃРµРєС†РёРё.";
+  }
+
+  return null;
+}
+
 export function createLocalRepository(): AppRepository {
   return {
     kind: "local",
@@ -134,6 +165,16 @@ export function createLocalRepository(): AppRepository {
         : [...payload.categories, category];
       savePayload(payload);
       return category;
+    },
+    async deleteCategory(categoryId) {
+      const payload = ensurePayload();
+      const deleteError = buildCategoryDeleteError(payload, categoryId);
+      if (deleteError) {
+        throw new Error(deleteError);
+      }
+
+      payload.categories = payload.categories.filter((item) => item.id !== categoryId);
+      savePayload(payload);
     },
     async upsertHomepageSection(section: HomepageSection) {
       const payload = ensurePayload();

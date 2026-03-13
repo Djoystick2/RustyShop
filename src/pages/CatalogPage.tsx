@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { CategoryTile } from "../components/storefront/CategoryTile";
 import { useAppContext } from "../context/AppContext";
+import { getCategoryProducts, getRootCategories } from "../lib/catalog";
 import {
   canViewProduct,
   filterProducts,
@@ -15,9 +16,7 @@ export function CatalogPage() {
 
   const categories = useMemo(
     () =>
-      state.categories
-        .filter((item) => (isAdmin ? true : item.isVisible))
-        .sort((a, b) => a.sortOrder - b.sortOrder),
+      getRootCategories(state.categories).filter((item) => (isAdmin ? true : item.isVisible)),
     [isAdmin, state.categories]
   );
 
@@ -41,15 +40,15 @@ export function CatalogPage() {
   return (
     <div className="page stack-lg catalog-page">
       <section className="card stack catalog-page__hero">
-        <p className="hero__eyebrow">Навигация по витрине</p>
+        <p className="hero__eyebrow">РќР°РІРёРіР°С†РёСЏ РїРѕ РІРёС‚СЂРёРЅРµ</p>
         <div className="catalog-page__heading">
           <div className="stack-sm">
-            <h1>Каталог</h1>
-            <p>Выберите тематический блок и откройте подборку изделий мастера в удобном ритме.</p>
+            <h1>РљР°С‚Р°Р»РѕРі</h1>
+            <p>РЎРЅР°С‡Р°Р»Р° РѕС‚РєСЂРѕР№С‚Рµ РєР°С‚РµРіРѕСЂРёСЋ, Р·Р°С‚РµРј РїСЂРё РЅР°Р»РёС‡РёРё РІС‹Р±РµСЂРёС‚Рµ РЅСѓР¶РЅСѓСЋ РїРѕРґРєР°С‚РµРіРѕСЂРёСЋ Рё С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ СЌС‚РѕРіРѕ РїРµСЂРµС…РѕРґРёС‚Рµ Рє Р»РёСЃС‚РёРЅРіСѓ.</p>
           </div>
           <div className="catalog-page__summary">
-            <span className="badge badge_soft">{categories.length} категорий</span>
-            <span className="badge badge_soft">{filteredProducts.length} товаров</span>
+            <span className="badge badge_soft">{categories.length} РєР°С‚РµРіРѕСЂРёР№</span>
+            <span className="badge badge_soft">{filteredProducts.length} С‚РѕРІР°СЂРѕРІ</span>
           </div>
         </div>
       </section>
@@ -61,68 +60,61 @@ export function CatalogPage() {
             className={`btn btn_secondary${listFilter === "all" ? " btn_active" : ""}`}
             onClick={() => setListFilter("all")}
           >
-            Все
+            Р’СЃРµ
           </button>
           <button
             type="button"
             className={`btn btn_secondary${listFilter === "available" ? " btn_active" : ""}`}
             onClick={() => setListFilter("available")}
           >
-            В наличии
+            Р’ РЅР°Р»РёС‡РёРё
           </button>
           <button
             type="button"
             className={`btn btn_secondary${listFilter === "giveaway" ? " btn_active" : ""}`}
             onClick={() => setListFilter("giveaway")}
           >
-            Розыгрыш
+            Р РѕР·С‹РіСЂС‹С€
           </button>
           <select
             className="compact-select"
             value={listSort}
             onChange={(event) => setListSort(event.target.value as ProductSortMode)}
           >
-            <option value="newest">Сначала новые</option>
-            <option value="title">По названию</option>
-            <option value="price_asc">Цена по возрастанию</option>
-            <option value="price_desc">Цена по убыванию</option>
+            <option value="newest">РЎРЅР°С‡Р°Р»Р° РЅРѕРІС‹Рµ</option>
+            <option value="title">РџРѕ РЅР°Р·РІР°РЅРёСЋ</option>
+            <option value="price_asc">Р¦РµРЅР° РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ</option>
+            <option value="price_desc">Р¦РµРЅР° РїРѕ СѓР±С‹РІР°РЅРёСЋ</option>
           </select>
         </div>
       </section>
 
       {categories.length === 0 ? (
         <section className="card empty-state">
-          <h3>Категорий пока нет</h3>
-          <p>Создайте категории в админке профиля.</p>
+          <h3>РљР°С‚РµРіРѕСЂРёР№ РїРѕРєР° РЅРµС‚</h3>
+          <p>РЎРѕР·РґР°Р№С‚Рµ РєР°С‚РµРіРѕСЂРёРё РІ Р°РґРјРёРЅРєРµ РїСЂРѕС„РёР»СЏ.</p>
         </section>
       ) : (
         <section className="category-grid catalog-page__grid">
           {categories.map((category) => {
-            const categoryProducts = filteredProducts.filter((product) => product.categoryId === category.id);
-            const hasProducts = categoryProducts.length > 0;
+            const categoryProducts = getCategoryProducts(filteredProducts, state.categories, category.id);
+            const subcategoryCount = state.categories.filter(
+              (item) => item.parentCategoryId === category.id && (isAdmin ? true : item.isVisible)
+            ).length;
 
             return (
-              <Link key={category.id} to={`/catalog/${category.id}`} className="card category-card">
-                <div className="category-card__head">
-                  <p className="category-card__emoji">{category.emoji}</p>
-                  <span className="badge badge_soft">{categoryProducts.length}</span>
-                </div>
-                <h2>{category.name}</h2>
-                <p>{category.description}</p>
-                {hasProducts ? (
-                  <>
-                    <small className="category-card__count">Товаров по текущим фильтрам: {categoryProducts.length}</small>
-                    <p className="category-card__preview">
-                      {categoryProducts
-                        .slice(0, 2)
-                        .map((item) => item.title)
-                        .join(" • ")}
-                    </p>
-                  </>
-                ) : (
-                  <small className="category-card__count">Сейчас нет товаров по выбранным фильтрам</small>
-                )}
-              </Link>
+              <CategoryTile
+                key={category.id}
+                category={category}
+                href={`/catalog/${category.id}`}
+                productCount={categoryProducts.length}
+                detailText={
+                  subcategoryCount > 0
+                    ? `Подкатегорий: ${subcategoryCount}`
+                    : `Товаров по текущим фильтрам: ${categoryProducts.length}`
+                }
+                previewText={categoryProducts.slice(0, 2).map((item) => item.title).join(" • ")}
+              />
             );
           })}
         </section>

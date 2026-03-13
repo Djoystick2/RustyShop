@@ -2,6 +2,7 @@ import type { SellerSettings } from "../types/entities";
 
 interface PurchaseProductContext {
   id: string;
+  sku: string;
   title: string;
   priceText: string;
 }
@@ -68,7 +69,7 @@ function buildPurchaseMessage(template: string, product: PurchaseProductContext)
     .replaceAll("{product}", product.title)
     .replaceAll("{price}", product.priceText)
     .replaceAll("{link}", buildProductLink(product.id))
-    .replaceAll("{article}", "");
+    .replaceAll("{article}", product.sku);
 
   if (!safeTemplate.includes("{product}")) {
     return `${resolved} ${product.title}`.trim();

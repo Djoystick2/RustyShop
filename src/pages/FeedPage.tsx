@@ -3,11 +3,13 @@ import { ProductQuickViewModal } from "../components/products/ProductQuickViewMo
 import { HomepageSectionRenderer } from "../components/storefront/HomepageSectionRenderer";
 import { StorefrontProductList } from "../components/storefront/StorefrontProductList";
 import { useAppContext } from "../context/AppContext";
+import { getCategoryProducts } from "../lib/catalog";
 import { canViewProduct, filterProducts, sortProducts } from "../lib/product-utils";
-import type { HomepageSection, Product } from "../types/entities";
+import type { Category, HomepageSection, Product } from "../types/entities";
 
 function pickSectionProducts(
   section: HomepageSection,
+  categories: Category[],
   products: Product[],
   newProducts: Product[],
   recommendedProducts: Product[],
@@ -23,9 +25,9 @@ function pickSectionProducts(
     return giveawayProducts;
   }
   if (section.type === "category_pick") {
-    return products
-      .filter((item) => item.categoryId === section.linkedCategoryId)
-      .slice(0, 6);
+    return section.linkedCategoryId
+      ? getCategoryProducts(products, categories, section.linkedCategoryId).slice(0, 6)
+      : [];
   }
   if (section.type === "seasonal_pick") {
     if (section.linkedProductIds.length > 0) {
@@ -163,6 +165,7 @@ export function FeedPage() {
               section={section}
               products={pickSectionProducts(
                 section,
+                state.categories,
                 storefrontProducts,
                 newProducts,
                 recommendedProducts,

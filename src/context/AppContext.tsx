@@ -91,6 +91,7 @@ interface AppContextValue {
   setSearchQuery: (value: string) => void;
   toggleFavorite: (productId: string) => Promise<void>;
   saveCategory: (input: CategoryInput) => Promise<void>;
+  deleteCategory: (categoryId: string) => Promise<void>;
   saveHomepageSection: (input: HomepageSectionInput) => Promise<void>;
   deleteHomepageSection: (sectionId: string) => Promise<void>;
   moveHomepageSection: (sectionId: string, direction: -1 | 1) => Promise<void>;
@@ -414,12 +415,37 @@ export function AppProvider({ children }: PropsWithChildren) {
       setActionError(null);
       const category: Category = {
         id: input.id ?? (repository.kind === "supabase" ? createUuid() : createId("cat")),
+        slug: input.slug.trim(),
+        parentCategoryId: input.parentCategoryId,
         name: input.name.trim(),
         description: input.description.trim(),
         emoji: input.emoji.trim() || "🧵",
+        imageUrl: input.imageUrl.trim(),
+        bannerUrl: input.bannerUrl.trim(),
         sortOrder: input.sortOrder,
         isVisible: input.isVisible
       };
+
+      if (category.parentCategoryId === category.id) {
+        setActionError("РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ СЂРѕРґРёС‚РµР»РµРј СЃР°РјРѕР№ СЃРµР±СЏ.");
+        return;
+      }
+
+      const parentCategory = category.parentCategoryId
+        ? state.categories.find((item) => item.id === category.parentCategoryId)
+        : null;
+      if (parentCategory?.parentCategoryId) {
+        setActionError("Р’ storefront РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РѕРґРёРЅ РІР»РѕР¶РµРЅРЅС‹Р№ СѓСЂРѕРІРµРЅСЊ.");
+        return;
+      }
+
+      if (
+        category.parentCategoryId &&
+        state.categories.some((item) => item.parentCategoryId === category.id)
+      ) {
+        setActionError("РљР°С‚РµРіРѕСЂРёСЋ СЃ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРјРё РїРѕРґРєР°С‚РµРіРѕСЂРёСЏРјРё РЅРµР»СЊР·СЏ РІР»РѕР¶РёС‚СЊ РµС‰С‘ РіР»СѓР±Р¶Рµ.");
+        return;
+      }
 
       try {
         const saved = await runWithSaving("category", () => repository.upsertCategory(category));
@@ -433,6 +459,25 @@ export function AppProvider({ children }: PropsWithChildren) {
             categories: categories.slice().sort((a, b) => a.sortOrder - b.sortOrder)
           };
         });
+      } catch (error) {
+        setActionError(mapError(error));
+      }
+    },
+    [guardAdminAction, repository, runWithSaving, state.categories]
+  );
+
+  const deleteCategory = useCallback(
+    async (categoryId: string) => {
+      if (!guardAdminAction()) {
+        return;
+      }
+      setActionError(null);
+      try {
+        await runWithSaving("category", () => repository.deleteCategory(categoryId));
+        setState((prev) => ({
+          ...prev,
+          categories: prev.categories.filter((item) => item.id !== categoryId)
+        }));
       } catch (error) {
         setActionError(mapError(error));
       }
@@ -568,6 +613,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       const product: Product = {
         id: input.id ?? (repository.kind === "supabase" ? createUuid() : createId("prod")),
         categoryId: input.categoryId,
+        sku: input.sku.trim(),
         title: input.title.trim(),
         description: input.description.trim(),
         priceText: input.priceText.trim() || "Цена по запросу",
@@ -1028,6 +1074,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       setSearchQuery,
       toggleFavorite,
       saveCategory,
+      deleteCategory,
       saveHomepageSection,
       deleteHomepageSection,
       moveHomepageSection,
@@ -1068,6 +1115,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       telegramBridgeInfo,
       themeMode,
       saveCategory,
+      deleteCategory,
       saveHomepageSection,
       deleteHomepageSection,
       moveHomepageSection,

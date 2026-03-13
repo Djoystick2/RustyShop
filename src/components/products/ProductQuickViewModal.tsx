@@ -96,6 +96,7 @@ export function ProductQuickViewModal({ product, imageUrl, onClose }: ProductQui
           <div className="stack-sm">
             <h2 id="quick-view-title">{product.title}</h2>
             <p className="product-price">{product.priceText}</p>
+            {product.sku ? <small>SKU: {product.sku}</small> : null}
           </div>
 
           <div className="badge-row">

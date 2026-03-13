@@ -364,12 +364,14 @@ export function createSupabaseRepository(): AppRepository {
     async upsertCategory(category) {
       const client = assertClient();
       const categoryId = assertUuid(category.id, "category.id");
+      const safeParentCategoryId = isUuid(category.parentCategoryId) ? category.parentCategoryId : null;
       const { data, error } = await client
         .from("categories")
         .upsert(
           toCategoryInsert({
             ...category,
-            id: categoryId
+            id: categoryId,
+            parentCategoryId: safeParentCategoryId
           })
         )
         .select("*");
@@ -379,6 +381,41 @@ export function createSupabaseRepository(): AppRepository {
           noRowMessage: "Категория не сохранена: запись недоступна или не создана."
         })
       );
+    },
+    async deleteCategory(categoryId) {
+      const client = assertClient();
+      const safeCategoryId = assertUuid(categoryId, "category.id");
+
+      const [childrenResult, productsResult, sectionsResult] = await Promise.all([
+        client.from("categories").select("id").eq("parent_category_id", safeCategoryId).limit(1),
+        client.from("products").select("id").eq("category_id", safeCategoryId).limit(1),
+        client.from("homepage_sections").select("id").eq("linked_category_id", safeCategoryId).limit(1)
+      ]);
+
+      if (childrenResult.error) {
+        throw new Error(formatDbError(childrenResult.error));
+      }
+      if (productsResult.error) {
+        throw new Error(formatDbError(productsResult.error));
+      }
+      if (sectionsResult.error) {
+        throw new Error(formatDbError(sectionsResult.error));
+      }
+
+      if ((childrenResult.data ?? []).length > 0) {
+        throw new Error("РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° Сѓ РЅРµС‘ РµСЃС‚СЊ РїРѕРґРєР°С‚РµРіРѕСЂРёРё.");
+      }
+      if ((productsResult.data ?? []).length > 0) {
+        throw new Error("РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° Рє РЅРµР№ РїСЂРёРІСЏР·Р°РЅС‹ С‚РѕРІР°СЂС‹.");
+      }
+      if ((sectionsResult.data ?? []).length > 0) {
+        throw new Error("РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° РѕРЅР° РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ storefront-СЃРµРєС†РёРё.");
+      }
+
+      const { error } = await client.from("categories").delete().eq("id", safeCategoryId);
+      if (error) {
+        throw new Error(formatDbError(error));
+      }
     },
     async upsertHomepageSection(section) {
       const client = assertClient();
