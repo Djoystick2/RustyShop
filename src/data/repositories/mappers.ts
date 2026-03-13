@@ -2,10 +2,12 @@ import type { Database } from "../../types/db";
 import type {
   Category,
   Favorite,
-  HomepageSection,
+  GiveawayEvent,
   GiveawayItem,
+  GiveawayParticipant,
   GiveawayResult,
   GiveawaySession,
+  HomepageSection,
   Product,
   ProductImage,
   Profile,
@@ -138,6 +140,7 @@ export function mapGiveawaySession(row: PublicTables["giveaway_sessions"]["Row"]
     id: row.id,
     title: row.title,
     description: row.description,
+    mode: row.mode,
     status: row.status,
     drawAt: row.draw_at,
     spinDurationMs: row.spin_duration_ms,
@@ -150,9 +153,27 @@ export function mapGiveawayItem(row: PublicTables["giveaway_items"]["Row"]): Giv
   return {
     id: row.id,
     sessionId: row.session_id,
+    itemType: row.item_type,
     productId: row.product_id,
+    title: row.title,
+    description: row.description,
+    emoji: row.emoji,
+    imageUrl: row.image_url,
     slots: row.slots,
-    isActive: row.is_active
+    isActive: row.is_active,
+    createdAt: row.created_at
+  };
+}
+
+export function mapGiveawayParticipant(
+  row: PublicTables["giveaway_participants"]["Row"]
+): GiveawayParticipant {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    nickname: row.nickname,
+    comment: row.comment,
+    createdAt: row.created_at
   };
 }
 
@@ -160,12 +181,26 @@ export function mapGiveawayResult(row: PublicTables["giveaway_results"]["Row"]):
   return {
     id: row.id,
     sessionId: row.session_id,
+    giveawayItemId: row.giveaway_item_id,
+    itemType: row.item_type,
     productId: row.product_id,
+    participantId: row.participant_id,
+    prizeTitle: row.prize_title,
     profileId: row.profile_id,
     winnerNickname: row.winner_nickname,
     spinDurationMs: row.spin_duration_ms,
     wonAt: row.won_at,
     note: row.note
+  };
+}
+
+export function mapGiveawayEvent(row: PublicTables["giveaway_events"]["Row"]): GiveawayEvent {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    type: row.event_type,
+    message: row.message,
+    createdAt: row.created_at
   };
 }
 

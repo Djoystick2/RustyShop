@@ -1,8 +1,13 @@
 import { createId } from "../../lib/id";
 import type {
+  GiveawayEvent,
+  GiveawayItem,
+  GiveawayParticipant,
   GiveawayResult,
+  GiveawaySession,
   GiveawaySessionStatus,
   HomepageSection,
+  Product,
   ProductImage
 } from "../../types/entities";
 import type { AppRepository, BootstrapContext } from "./contracts";
@@ -34,48 +39,6 @@ function savePayload(payload: PersistedPayload) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
-function ensurePayload(): PersistedPayload {
-  const fallback = createFallbackBootstrap();
-  const parsed = loadStoredPayload();
-  if (!parsed) {
-    return fallback;
-  }
-
-  return {
-    activeProfileId: parsed.activeProfileId || fallback.activeProfileId,
-    profiles: parsed.profiles ?? fallback.profiles,
-    products: (parsed.products ?? fallback.products).map((product) => ({
-      ...product,
-      sku: product.sku ?? "",
-      isFeatured: product.isFeatured ?? false
-    })),
-    productImages: parsed.productImages ?? fallback.productImages,
-    categories: (parsed.categories ?? fallback.categories).map((category) => ({
-      ...category,
-      slug: category.slug ?? "",
-      parentCategoryId: category.parentCategoryId ?? null,
-      imageUrl: category.imageUrl ?? "",
-      bannerUrl: category.bannerUrl ?? ""
-    })),
-    favorites: parsed.favorites ?? fallback.favorites,
-    storeSettings: { ...fallback.storeSettings, ...parsed.storeSettings, heroImageUrl: parsed.storeSettings?.heroImageUrl ?? fallback.storeSettings.heroImageUrl },
-    sellerSettings: { ...fallback.sellerSettings, ...parsed.sellerSettings },
-    homepageSections: (parsed.homepageSections ?? fallback.homepageSections).map((item) => ({
-      ...item,
-      linkedProductIds: [...item.linkedProductIds]
-    })),
-    giveawaySessions: (parsed.giveawaySessions ?? fallback.giveawaySessions).map((session) => ({
-      ...session,
-      spinDurationMs:
-        typeof session.spinDurationMs === "number" && Number.isFinite(session.spinDurationMs)
-          ? session.spinDurationMs
-          : 6000
-    })),
-    giveawayItems: parsed.giveawayItems ?? fallback.giveawayItems,
-    giveawayResults: parsed.giveawayResults ?? fallback.giveawayResults
-  };
-}
-
 function resolveActiveProfile(payload: PersistedPayload, context: BootstrapContext): string {
   if (!context.telegramUser) {
     return payload.activeProfileId || payload.profiles[0]?.id || "";
@@ -103,11 +66,146 @@ function refreshProductImages(payload: PersistedPayload, productId: string, imag
   return newImages;
 }
 
+function normalizeGiveawaySession(session: GiveawaySession): GiveawaySession {
+  return {
+    ...session,
+    mode: session.mode ?? "scenario",
+    spinDurationMs:
+      typeof session.spinDurationMs === "number" && Number.isFinite(session.spinDurationMs)
+        ? session.spinDurationMs
+        : 6000
+  };
+}
+
+function normalizeGiveawayItem(raw: GiveawayItem, products: Product[]): GiveawayItem {
+  const product = raw.productId ? products.find((item) => item.id === raw.productId) : null;
+  return {
+    ...raw,
+    itemType: raw.itemType ?? (raw.productId ? "catalog_product" : "special_prize"),
+    productId: raw.productId ?? null,
+    title: raw.title ?? product?.title ?? "Special prize",
+    description: raw.description ?? product?.description ?? "",
+    emoji: raw.emoji ?? "",
+    imageUrl: raw.imageUrl ?? "",
+    slots:
+      typeof raw.slots === "number" && Number.isFinite(raw.slots) && raw.slots > 0 ? raw.slots : 1,
+    isActive: raw.isActive ?? true,
+    createdAt: raw.createdAt ?? new Date().toISOString()
+  };
+}
+
+function normalizeGiveawayParticipant(participant: GiveawayParticipant): GiveawayParticipant {
+  return {
+    ...participant,
+    comment: participant.comment ?? "",
+    createdAt: participant.createdAt ?? new Date().toISOString()
+  };
+}
+
+function normalizeGiveawayResult(
+  raw: GiveawayResult,
+  items: GiveawayItem[],
+  products: Product[]
+): GiveawayResult {
+  const sourceItem = items.find((item) => item.id === raw.giveawayItemId);
+  const product = raw.productId ? products.find((item) => item.id === raw.productId) : null;
+  return {
+    ...raw,
+    giveawayItemId: raw.giveawayItemId ?? sourceItem?.id ?? createId("giveaway_item_ref"),
+    itemType: raw.itemType ?? sourceItem?.itemType ?? (raw.productId ? "catalog_product" : "special_prize"),
+    productId: raw.productId ?? sourceItem?.productId ?? null,
+    participantId: raw.participantId ?? null,
+    prizeTitle: raw.prizeTitle ?? sourceItem?.title ?? product?.title ?? "Prize",
+    note: raw.note ?? ""
+  };
+}
+
+function normalizeGiveawayEvent(event: GiveawayEvent): GiveawayEvent {
+  return {
+    ...event,
+    createdAt: event.createdAt ?? new Date().toISOString()
+  };
+}
+
+function appendGiveawayEvent(
+  payload: PersistedPayload,
+  sessionId: string,
+  type: GiveawayEvent["type"],
+  message: string
+): GiveawayEvent {
+  const event: GiveawayEvent = {
+    id: createId("giveaway_event"),
+    sessionId,
+    type,
+    message,
+    createdAt: new Date().toISOString()
+  };
+  payload.giveawayEvents = [event, ...payload.giveawayEvents];
+  return event;
+}
+
+function ensurePayload(): PersistedPayload {
+  const fallback = createFallbackBootstrap();
+  const parsed = loadStoredPayload();
+  if (!parsed) {
+    return fallback;
+  }
+
+  const products = (parsed.products ?? fallback.products).map((product) => ({
+    ...product,
+    sku: product.sku ?? "",
+    isFeatured: product.isFeatured ?? false
+  }));
+
+  const giveawaySessions = (parsed.giveawaySessions ?? fallback.giveawaySessions).map(normalizeGiveawaySession);
+  const giveawayItems = (parsed.giveawayItems ?? fallback.giveawayItems).map((item) =>
+    normalizeGiveawayItem(item, products)
+  );
+
+  return {
+    activeProfileId: parsed.activeProfileId || fallback.activeProfileId,
+    profiles: parsed.profiles ?? fallback.profiles,
+    products,
+    productImages: parsed.productImages ?? fallback.productImages,
+    categories: (parsed.categories ?? fallback.categories).map((category) => ({
+      ...category,
+      slug: category.slug ?? "",
+      parentCategoryId: category.parentCategoryId ?? null,
+      imageUrl: category.imageUrl ?? "",
+      bannerUrl: category.bannerUrl ?? ""
+    })),
+    favorites: parsed.favorites ?? fallback.favorites,
+    storeSettings: {
+      ...fallback.storeSettings,
+      ...parsed.storeSettings,
+      heroImageUrl: parsed.storeSettings?.heroImageUrl ?? fallback.storeSettings.heroImageUrl
+    },
+    sellerSettings: { ...fallback.sellerSettings, ...parsed.sellerSettings },
+    homepageSections: (parsed.homepageSections ?? fallback.homepageSections).map((item) => ({
+      ...item,
+      linkedProductIds: [...item.linkedProductIds]
+    })),
+    giveawaySessions,
+    giveawayItems,
+    giveawayParticipants: (parsed.giveawayParticipants ?? fallback.giveawayParticipants).map(
+      normalizeGiveawayParticipant
+    ),
+    giveawayResults: (parsed.giveawayResults ?? fallback.giveawayResults).map((item) =>
+      normalizeGiveawayResult(item, giveawayItems, products)
+    ),
+    giveawayEvents: (parsed.giveawayEvents ?? fallback.giveawayEvents).map(normalizeGiveawayEvent)
+  };
+}
+
 function buildGiveawayResult(input: GiveawaySpinInput & { profileId: string | null }): GiveawayResult {
   return {
     id: createId("giveaway_result"),
     sessionId: input.sessionId,
+    giveawayItemId: input.giveawayItemId,
+    itemType: input.itemType,
     productId: input.productId,
+    participantId: input.participantId,
+    prizeTitle: input.prizeTitle,
     profileId: input.profileId,
     winnerNickname: input.winnerNickname,
     spinDurationMs: input.spinDurationMs,
@@ -119,22 +217,19 @@ function buildGiveawayResult(input: GiveawaySpinInput & { profileId: string | nu
 function buildCategoryDeleteError(payload: PersistedPayload, categoryId: string): string | null {
   const category = payload.categories.find((item) => item.id === categoryId);
   if (!category) {
-    return "РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.";
+    return "Category was not found.";
   }
 
-  const childCount = payload.categories.filter((item) => item.parentCategoryId === categoryId).length;
-  if (childCount > 0) {
-    return "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° Сѓ РЅРµС‘ РµСЃС‚СЊ РїРѕРґРєР°С‚РµРіРѕСЂРёРё.";
+  if (payload.categories.some((item) => item.parentCategoryId === categoryId)) {
+    return "Delete is blocked: move or remove child categories first.";
   }
 
-  const productCount = payload.products.filter((item) => item.categoryId === categoryId).length;
-  if (productCount > 0) {
-    return "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° Рє РЅРµР№ РїСЂРёРІСЏР·Р°РЅС‹ С‚РѕРІР°СЂС‹.";
+  if (payload.products.some((item) => item.categoryId === categoryId)) {
+    return "Delete is blocked: there are products linked to this category.";
   }
 
-  const linkedSections = payload.homepageSections.filter((item) => item.linkedCategoryId === categoryId).length;
-  if (linkedSections > 0) {
-    return "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ, РїРѕРєР° РѕРЅР° РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ storefront-СЃРµРєС†РёРё.";
+  if (payload.homepageSections.some((item) => item.linkedCategoryId === categoryId)) {
+    return "Delete is blocked: storefront sections still reference this category.";
   }
 
   return null;
@@ -204,7 +299,7 @@ export function createLocalRepository(): AppRepository {
       const payload = ensurePayload();
       const hasGiveawayHistory = payload.giveawayResults.some((result) => result.productId === productId);
       if (hasGiveawayHistory) {
-        throw new Error("Нельзя удалить товар, который уже участвовал в результатах розыгрыша.");
+        throw new Error("Product cannot be deleted because it is already used in giveaway history.");
       }
 
       payload.products = payload.products.filter((item) => item.id !== productId);
@@ -221,7 +316,7 @@ export function createLocalRepository(): AppRepository {
       const payload = ensurePayload();
       let updated = payload.products.find((item) => item.id === productId);
       if (!updated) {
-        throw new Error("Товар не найден");
+        throw new Error("Product was not found.");
       }
 
       updated = {
@@ -280,10 +375,11 @@ export function createLocalRepository(): AppRepository {
     },
     async createGiveawaySession(input: GiveawaySessionInput) {
       const payload = ensurePayload();
-      const session = {
+      const session: GiveawaySession = {
         id: createId("giveaway"),
         title: input.title.trim(),
         description: input.description.trim(),
+        mode: input.mode ?? "scenario",
         status: "draft" as GiveawaySessionStatus,
         drawAt: input.drawAt,
         spinDurationMs:
@@ -294,6 +390,7 @@ export function createLocalRepository(): AppRepository {
         updatedAt: new Date().toISOString()
       };
       payload.giveawaySessions = [session, ...payload.giveawaySessions];
+      appendGiveawayEvent(payload, session.id, "session_created", `Session "${session.title}" created.`);
       savePayload(payload);
       return session;
     },
@@ -301,12 +398,13 @@ export function createLocalRepository(): AppRepository {
       const payload = ensurePayload();
       const session = payload.giveawaySessions.find((item) => item.id === sessionId);
       if (!session) {
-        throw new Error("Сессия розыгрыша не найдена");
+        throw new Error("Giveaway session was not found.");
       }
 
-      const updated = {
+      const updated: GiveawaySession = {
         ...session,
         ...patch,
+        mode: patch.mode ?? session.mode,
         spinDurationMs:
           typeof patch.spinDurationMs === "number" && Number.isFinite(patch.spinDurationMs)
             ? Math.max(2000, Math.min(180000, Math.round(patch.spinDurationMs)))
@@ -316,6 +414,7 @@ export function createLocalRepository(): AppRepository {
       payload.giveawaySessions = payload.giveawaySessions.map((item) =>
         item.id === sessionId ? updated : item
       );
+      appendGiveawayEvent(payload, sessionId, "session_updated", `Session "${updated.title}" updated.`);
       savePayload(payload);
       return updated;
     },
@@ -323,40 +422,99 @@ export function createLocalRepository(): AppRepository {
       const payload = ensurePayload();
       const session = payload.giveawaySessions.find((item) => item.id === sessionId);
       if (!session) {
-        throw new Error("Сессия розыгрыша не найдена");
+        throw new Error("Giveaway session was not found.");
       }
       const updated = { ...session, status, updatedAt: new Date().toISOString() };
       payload.giveawaySessions = payload.giveawaySessions.map((item) =>
         item.id === sessionId ? updated : item
       );
+      appendGiveawayEvent(payload, sessionId, "session_status_changed", `Session moved to ${status}.`);
+      if (status === "completed") {
+        appendGiveawayEvent(payload, sessionId, "session_completed", `Session "${updated.title}" completed.`);
+      }
       savePayload(payload);
       return updated;
     },
     async saveGiveawayItem(item) {
       const payload = ensurePayload();
-      const exists = payload.giveawayItems.find(
-        (existing) => existing.sessionId === item.sessionId && existing.productId === item.productId
-      );
-      if (exists) {
-        const updated = { ...exists, ...item };
-        payload.giveawayItems = payload.giveawayItems.map((existing) =>
-          existing.id === exists.id ? updated : existing
-        );
-        savePayload(payload);
-        return updated;
-      }
+      const normalized = normalizeGiveawayItem(item, payload.products);
+      const conflict =
+        normalized.itemType === "catalog_product" && normalized.productId
+          ? payload.giveawayItems.find(
+              (existing) =>
+                existing.sessionId === normalized.sessionId &&
+                existing.itemType === "catalog_product" &&
+                existing.productId === normalized.productId
+            )
+          : null;
+      const exists = payload.giveawayItems.find((existing) => existing.id === normalized.id) ?? conflict ?? null;
 
-      const created = {
-        ...item,
-        id: item.id || createId("giveaway_item")
-      };
-      payload.giveawayItems.push(created);
+      const saved = exists
+        ? { ...exists, ...normalized, createdAt: exists.createdAt }
+        : { ...normalized, id: normalized.id || createId("giveaway_item") };
+
+      payload.giveawayItems = exists
+        ? payload.giveawayItems.map((existing) => (existing.id === exists.id ? saved : existing))
+        : [...payload.giveawayItems, saved];
+
+      appendGiveawayEvent(
+        payload,
+        saved.sessionId,
+        "lot_added",
+        `${saved.itemType === "catalog_product" ? "Catalog lot" : "Special prize"} "${saved.title}" saved.`
+      );
       savePayload(payload);
-      return created;
+      return saved;
     },
     async removeGiveawayItem(itemId: string) {
       const payload = ensurePayload();
-      payload.giveawayItems = payload.giveawayItems.filter((item) => item.id !== itemId);
+      const item = payload.giveawayItems.find((entry) => entry.id === itemId);
+      if (!item) {
+        return;
+      }
+      if (payload.giveawayResults.some((result) => result.giveawayItemId === itemId)) {
+        throw new Error("Lot cannot be deleted because it is already used in giveaway history.");
+      }
+      payload.giveawayItems = payload.giveawayItems.filter((entry) => entry.id !== itemId);
+      appendGiveawayEvent(payload, item.sessionId, "lot_removed", `Lot "${item.title}" removed.`);
+      savePayload(payload);
+    },
+    async saveGiveawayParticipant(participant) {
+      const payload = ensurePayload();
+      const saved: GiveawayParticipant = {
+        ...participant,
+        comment: participant.comment?.trim() ?? "",
+        createdAt: participant.createdAt ?? new Date().toISOString()
+      };
+      const exists = payload.giveawayParticipants.some((item) => item.id === saved.id);
+      payload.giveawayParticipants = exists
+        ? payload.giveawayParticipants.map((item) => (item.id === saved.id ? saved : item))
+        : [...payload.giveawayParticipants, saved];
+      appendGiveawayEvent(
+        payload,
+        saved.sessionId,
+        "participant_added",
+        `Participant "${saved.nickname}" saved.`
+      );
+      savePayload(payload);
+      return saved;
+    },
+    async removeGiveawayParticipant(participantId: string) {
+      const payload = ensurePayload();
+      const participant = payload.giveawayParticipants.find((item) => item.id === participantId);
+      if (!participant) {
+        return;
+      }
+      if (payload.giveawayResults.some((result) => result.participantId === participantId)) {
+        throw new Error("Participant cannot be deleted because results already reference them.");
+      }
+      payload.giveawayParticipants = payload.giveawayParticipants.filter((item) => item.id !== participantId);
+      appendGiveawayEvent(
+        payload,
+        participant.sessionId,
+        "participant_removed",
+        `Participant "${participant.nickname}" removed.`
+      );
       savePayload(payload);
     },
     async createGiveawayResult(input) {
@@ -364,8 +522,9 @@ export function createLocalRepository(): AppRepository {
       const result = buildGiveawayResult(input);
 
       payload.giveawayResults = [result, ...payload.giveawayResults];
+
       const item = payload.giveawayItems.find((candidate) => candidate.id === input.giveawayItemId);
-      let updatedItem: (typeof item) | null = null;
+      let updatedItem: GiveawayItem | null = null;
       if (item) {
         updatedItem = { ...item, isActive: false };
         payload.giveawayItems = payload.giveawayItems.map((candidate) =>
@@ -373,21 +532,43 @@ export function createLocalRepository(): AppRepository {
         );
       }
 
-      const activeRemaining = payload.giveawayItems.some(
+      const createdEvents = [
+        appendGiveawayEvent(payload, input.sessionId, "spin_started", `Spin started for "${input.prizeTitle}".`),
+        appendGiveawayEvent(
+          payload,
+          input.sessionId,
+          "result_recorded",
+          `${input.winnerNickname || "Unnamed participant"} won "${input.prizeTitle}".`
+        )
+      ];
+
+      const hasActiveRemaining = payload.giveawayItems.some(
         (candidate) => candidate.sessionId === input.sessionId && candidate.isActive
       );
-      if (!activeRemaining) {
-        payload.giveawaySessions = payload.giveawaySessions.map((session) =>
-          session.id === input.sessionId
-            ? { ...session, status: "completed", updatedAt: new Date().toISOString() }
-            : session
+      let updatedSession: GiveawaySession | null = null;
+      if (!hasActiveRemaining) {
+        payload.giveawaySessions = payload.giveawaySessions.map((session) => {
+          if (session.id !== input.sessionId) {
+            return session;
+          }
+          updatedSession = {
+            ...session,
+            status: "completed",
+            updatedAt: new Date().toISOString()
+          };
+          return updatedSession;
+        });
+        createdEvents.push(
+          appendGiveawayEvent(payload, input.sessionId, "session_completed", "Session completed after final prize.")
         );
       }
 
       savePayload(payload);
       return {
         result,
-        updatedItem
+        updatedItem,
+        updatedSession,
+        createdEvents
       };
     },
     async listGiveawayResults() {

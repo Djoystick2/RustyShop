@@ -1,7 +1,9 @@
 import type {
   Category,
   Favorite,
+  GiveawayEvent,
   GiveawayItem,
+  GiveawayParticipant,
   GiveawayResult,
   GiveawaySession,
   HomepageSection,
@@ -21,23 +23,26 @@ function imagePlaceholder(label: string, bgColor: string): string {
 }
 
 const now = new Date().toISOString();
+const nextWeek = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
+const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString();
+const twoDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString();
 
 export const fallbackProfiles: Profile[] = [
   {
     id: "profile_user_demo",
     telegramUserId: null,
-    displayName: "Р“РѕСЃС‚СЊ СЏСЂРјР°СЂРєРё",
-    avatarUrl: imagePlaceholder("РџРѕРєСѓРїР°С‚РµР»СЊ", "#ffe6c7"),
+    displayName: "Demo Buyer",
+    avatarUrl: imagePlaceholder("Buyer", "#ffe6c7"),
     role: "user",
-    about: "Р›СЋР±Р»СЋ Р°РІС‚РѕСЂСЃРєРёРµ РІРµС‰Рё Рё СЂСѓС‡РЅСѓСЋ СЂР°Р±РѕС‚Сѓ."
+    about: "Likes handmade goods and giveaway drops."
   },
   {
     id: "profile_admin_demo",
     telegramUserId: null,
-    displayName: "РњР°СЃС‚РµСЂ РћР»СЊРіР°",
-    avatarUrl: imagePlaceholder("РњР°СЃС‚РµСЂ", "#ffd9a1"),
+    displayName: "Admin Maker",
+    avatarUrl: imagePlaceholder("Admin", "#ffd9a1"),
     role: "admin",
-    about: "РЎРѕР·РґР°СЋ СѓСЋС‚РЅС‹Рµ РёР·РґРµР»РёСЏ РёР· РЅР°С‚СѓСЂР°Р»СЊРЅС‹С… РјР°С‚РµСЂРёР°Р»РѕРІ."
+    about: "Runs the catalog, store settings and giveaway sessions."
   }
 ];
 
@@ -46,11 +51,11 @@ export const fallbackCategories: Category[] = [
     id: "cat_home",
     slug: "home",
     parentCategoryId: null,
-    name: "РЈСЋС‚ РґР»СЏ РґРѕРјР°",
-    description: "РЎРІРµС‡Рё, С‚РµРєСЃС‚РёР»СЊ Рё РґРµРєРѕСЂ СЂСѓС‡РЅРѕР№ СЂР°Р±РѕС‚С‹.",
-    emoji: "рџЏ ",
-    imageUrl: imagePlaceholder("Р”РѕРј", "#ffe4ca"),
-    bannerUrl: imagePlaceholder("РЈСЋС‚ РґР»СЏ РґРѕРјР°", "#fff0df"),
+    name: "Home",
+    description: "Decor, candles and small cozy goods.",
+    emoji: "home",
+    imageUrl: imagePlaceholder("Home", "#ffe4ca"),
+    bannerUrl: imagePlaceholder("Home Banner", "#fff0df"),
     sortOrder: 1,
     isVisible: true
   },
@@ -58,11 +63,11 @@ export const fallbackCategories: Category[] = [
     id: "cat_home_candles",
     slug: "candles",
     parentCategoryId: "cat_home",
-    name: "РЎРІРµС‡Рё",
-    description: "РђСЂРѕРјР°С‚С‹, РєРµСЂР°РјРёРєР° Рё РјСЏРіРєРёР№ СЃРІРµС‚ РґР»СЏ РІРµС‡РµСЂРѕРІ.",
-    emoji: "рџ•Ї",
-    imageUrl: imagePlaceholder("РЎРІРµС‡Рё", "#ffd8b8"),
-    bannerUrl: imagePlaceholder("РЎРІРµС‡Рё", "#ffe9d1"),
+    name: "Candles",
+    description: "Wax candles and soft evening light.",
+    emoji: "candle",
+    imageUrl: imagePlaceholder("Candles", "#ffd8b8"),
+    bannerUrl: imagePlaceholder("Candles Banner", "#ffe9d1"),
     sortOrder: 1,
     isVisible: true
   },
@@ -70,11 +75,11 @@ export const fallbackCategories: Category[] = [
     id: "cat_home_textile",
     slug: "textile",
     parentCategoryId: "cat_home",
-    name: "РўРµРєСЃС‚РёР»СЊ",
-    description: "РџР»РµРґС‹ Рё С‚Р°РєС‚РёР»СЊРЅС‹Рµ Р°РєС†РµРЅС‚С‹ РґР»СЏ РґРѕРјР°.",
-    emoji: "рџ§¶",
-    imageUrl: imagePlaceholder("РўРµРєСЃС‚РёР»СЊ", "#ffe8c8"),
-    bannerUrl: imagePlaceholder("РўРµРєСЃС‚РёР»СЊ", "#fff1dd"),
+    name: "Textile",
+    description: "Plaids, covers and other soft goods.",
+    emoji: "thread",
+    imageUrl: imagePlaceholder("Textile", "#ffe8c8"),
+    bannerUrl: imagePlaceholder("Textile Banner", "#fff1dd"),
     sortOrder: 2,
     isVisible: true
   },
@@ -82,11 +87,11 @@ export const fallbackCategories: Category[] = [
     id: "cat_toys",
     slug: "toys",
     parentCategoryId: null,
-    name: "РРіСЂСѓС€РєРё",
-    description: "РњСЏРіРєРёРµ РёРіСЂСѓС€РєРё Рё РїРѕРґРІРµСЃС‹ РґР»СЏ РґРµС‚СЃРєРѕР№.",
-    emoji: "рџ§ё",
-    imageUrl: imagePlaceholder("РРіСЂСѓС€РєРё", "#ffd2ad"),
-    bannerUrl: imagePlaceholder("РРіСЂСѓС€РєРё", "#ffe6cb"),
+    name: "Toys",
+    description: "Handmade toys and gifts.",
+    emoji: "toy",
+    imageUrl: imagePlaceholder("Toys", "#ffd2ad"),
+    bannerUrl: imagePlaceholder("Toys Banner", "#ffe6cb"),
     sortOrder: 2,
     isVisible: true
   },
@@ -94,11 +99,11 @@ export const fallbackCategories: Category[] = [
     id: "cat_toys_soft",
     slug: "soft-toys",
     parentCategoryId: "cat_toys",
-    name: "РњСЏРіРєРёРµ РёРіСЂСѓС€РєРё",
-    description: "Р’СЏР·Р°РЅС‹Рµ Рё С‚РµРєСЃС‚РёР»СЊРЅС‹Рµ РіРµСЂРѕРё РґР»СЏ РїРѕРґР°СЂРєР°.",
-    emoji: "рџђ°",
-    imageUrl: imagePlaceholder("РњСЏРіРєРёРµ РёРіСЂСѓС€РєРё", "#ffd7b8"),
-    bannerUrl: imagePlaceholder("РњСЏРіРєРёРµ РёРіСЂСѓС€РєРё", "#ffead5"),
+    name: "Soft Toys",
+    description: "Soft characters and giftable plush items.",
+    emoji: "bear",
+    imageUrl: imagePlaceholder("Soft Toys", "#ffd7b8"),
+    bannerUrl: imagePlaceholder("Soft Toys Banner", "#ffead5"),
     sortOrder: 1,
     isVisible: true
   },
@@ -106,11 +111,11 @@ export const fallbackCategories: Category[] = [
     id: "cat_jewelry",
     slug: "jewelry",
     parentCategoryId: null,
-    name: "РЈРєСЂР°С€РµРЅРёСЏ",
-    description: "РђРІС‚РѕСЂСЃРєРёРµ СЃРµСЂСЊРіРё Рё РєСѓР»РѕРЅС‹.",
-    emoji: "рџ’Ќ",
-    imageUrl: imagePlaceholder("РЈРєСЂР°С€РµРЅРёСЏ", "#ffd5aa"),
-    bannerUrl: imagePlaceholder("РЈРєСЂР°С€РµРЅРёСЏ", "#ffe7ca"),
+    name: "Jewelry",
+    description: "Ceramic earrings and small accessories.",
+    emoji: "gem",
+    imageUrl: imagePlaceholder("Jewelry", "#ffd5aa"),
+    bannerUrl: imagePlaceholder("Jewelry Banner", "#ffe7ca"),
     sortOrder: 3,
     isVisible: true
   }
@@ -121,12 +126,11 @@ export const fallbackProducts: Product[] = [
     id: "prod_candle_luna",
     categoryId: "cat_home_candles",
     sku: "CNDL-LUNA-001",
-    title: "РЎРІРµС‡Р° В«Р›СѓРЅР° Рё Р’Р°РЅРёР»СЊВ»",
-    description:
-      "РЎРѕРµРІС‹Р№ РІРѕСЃРє РІ РєРµСЂР°РјРёС‡РµСЃРєРѕР№ Р±Р°РЅРѕС‡РєРµ, РјСЏРіРєРёР№ Р°СЂРѕРјР°С‚ Рё РґРѕР»РіРѕРµ РіРѕСЂРµРЅРёРµ.",
-    priceText: "1 250 в‚Ѕ",
+    title: "Luna Candle",
+    description: "Soy candle in a ceramic jar with vanilla scent.",
+    priceText: "1 250 RUB",
     status: "new",
-    materials: ["СЃРѕРµРІС‹Р№ РІРѕСЃРє", "РєРµСЂР°РјРёРєР°", "СЌС„РёСЂРЅС‹Рµ РјР°СЃР»Р°"],
+    materials: ["Soy wax", "Ceramic", "Fragrance oils"],
     isVisible: true,
     isAvailable: true,
     isGiveawayEligible: true,
@@ -138,11 +142,11 @@ export const fallbackProducts: Product[] = [
     id: "prod_plaid_cloud",
     categoryId: "cat_home_textile",
     sku: "TEXT-CLOUD-002",
-    title: "РџР»РµРґ В«РћР±Р»Р°РєРѕВ»",
-    description: "РњСЏРіРєРёР№ РІСЏР·Р°РЅС‹Р№ РїР»РµРґ РґР»СЏ СѓСЋС‚РЅС‹С… РІРµС‡РµСЂРѕРІ.",
-    priceText: "4 900 в‚Ѕ",
+    title: "Cloud Plaid",
+    description: "Soft plaid for cozy evenings.",
+    priceText: "4 900 RUB",
     status: "popular",
-    materials: ["РјРµСЂРёРЅРѕСЃ", "С…Р»РѕРїРѕРє"],
+    materials: ["Merino", "Cotton"],
     isVisible: true,
     isAvailable: true,
     isGiveawayEligible: false,
@@ -154,11 +158,11 @@ export const fallbackProducts: Product[] = [
     id: "prod_bunny",
     categoryId: "cat_toys_soft",
     sku: "TOY-BUNNY-003",
-    title: "Р—Р°Р№РєР° В«РџР»РѕРјР±РёСЂВ»",
-    description: "Р’СЏР·Р°РЅР°СЏ РјСЏРіРєР°СЏ РёРіСЂСѓС€РєР° СЃ РіРёРїРѕР°Р»Р»РµСЂРіРµРЅРЅС‹Рј РЅР°РїРѕР»РЅРёС‚РµР»РµРј.",
-    priceText: "2 300 в‚Ѕ",
+    title: "Plush Bunny",
+    description: "Soft bunny toy with hypoallergenic filling.",
+    priceText: "2 300 RUB",
     status: "popular",
-    materials: ["РїР»СЋС€РµРІР°СЏ РїСЂСЏР¶Р°", "РЅР°РїРѕР»РЅРёС‚РµР»СЊ"],
+    materials: ["Plush yarn", "Soft filler"],
     isVisible: true,
     isAvailable: true,
     isGiveawayEligible: true,
@@ -170,11 +174,11 @@ export const fallbackProducts: Product[] = [
     id: "prod_amber_earrings",
     categoryId: "cat_jewelry",
     sku: "JWL-AMBER-004",
-    title: "РЎРµСЂСЊРіРё В«РЇРЅС‚Р°СЂРЅС‹Р№ СЃРІРµС‚В»",
-    description: "Р›РµРіРєРёРµ СЃРµСЂСЊРіРё СЃ СЂСѓС‡РЅРѕР№ СЂРѕСЃРїРёСЃСЊСЋ.",
-    priceText: "1 800 в‚Ѕ",
+    title: "Amber Light Earrings",
+    description: "Ceramic earrings with warm enamel finish.",
+    priceText: "1 800 RUB",
     status: "new",
-    materials: ["РїРѕР»РёРјРµСЂРЅР°СЏ РіР»РёРЅР°", "С„СѓСЂРЅРёС‚СѓСЂР° РёР· СЃС‚Р°Р»Рё"],
+    materials: ["Ceramic", "Steel fittings"],
     isVisible: true,
     isAvailable: false,
     isGiveawayEligible: false,
@@ -188,28 +192,28 @@ export const fallbackProductImages: ProductImage[] = [
   {
     id: "img_candle_1",
     productId: "prod_candle_luna",
-    url: imagePlaceholder("РЎРІРµС‡Р°", "#ffd8b8"),
+    url: imagePlaceholder("Luna Candle", "#ffd8b8"),
     isPrimary: true,
     position: 1
   },
   {
     id: "img_plaid_1",
     productId: "prod_plaid_cloud",
-    url: imagePlaceholder("РџР»РµРґ", "#ffe1bf"),
+    url: imagePlaceholder("Cloud Plaid", "#ffe1bf"),
     isPrimary: true,
     position: 1
   },
   {
     id: "img_bunny_1",
     productId: "prod_bunny",
-    url: imagePlaceholder("Р—Р°Р№РєР°", "#ffd2ad"),
+    url: imagePlaceholder("Plush Bunny", "#ffd2ad"),
     isPrimary: true,
     position: 1
   },
   {
     id: "img_amber_1",
     productId: "prod_amber_earrings",
-    url: imagePlaceholder("РЎРµСЂСЊРіРё", "#ffd5aa"),
+    url: imagePlaceholder("Amber Earrings", "#ffd5aa"),
     isPrimary: true,
     position: 1
   }
@@ -219,37 +223,35 @@ export const fallbackFavorites: Favorite[] = [];
 
 export const fallbackStoreSettings: StoreSettings = {
   id: "main",
-  storeName: "РЇСЂРјР°СЂРєР° РјР°СЃС‚РµСЂР°",
-  brandSlogan: "РўРµРїР»С‹Рµ РІРµС‰Рё СЃ РґСѓС€РѕР№ Рё С…Р°СЂР°РєС‚РµСЂРѕРј",
-  heroBadge: "Р СѓС‡РЅР°СЏ СЂР°Р±РѕС‚Р°",
+  storeName: "RustyShop Handmade",
+  brandSlogan: "Warm things with a small-batch feel",
+  heroBadge: "Handmade",
   heroImageUrl: "",
-  mascotEmoji: "рџ¦Љ",
-  storeDescription: "РџРµСЂСЃРѕРЅР°Р»СЊРЅС‹Р№ РјР°РіР°Р·РёРЅ СѓСЋС‚РЅС‹С… РІРµС‰РµР№ СЂСѓС‡РЅРѕР№ СЂР°Р±РѕС‚С‹.",
-  welcomeText: "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ! Р—РґРµСЃСЊ РєР°Р¶РґР°СЏ РІРµС‰СЊ СЃРґРµР»Р°РЅР° СЃ Р·Р°Р±РѕС‚РѕР№.",
-  infoBlock: "РћС‚РїСЂР°РІРєР° РїРѕ Р РѕСЃСЃРёРё Рё РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ Р·Р°РєР°Р·Р°.",
-  promoTitle: "РЎРµР·РѕРЅРЅР°СЏ РїРѕРґР±РѕСЂРєР°",
-  promoText: "РћСЃРµРЅРЅРёРµ РЅРѕРІРёРЅРєРё СѓР¶Рµ РІ РІРёС‚СЂРёРЅРµ: СЃРІРµС‡Рё, РїР»РµРґС‹ Рё РјР°Р»РµРЅСЊРєРёРµ РїРѕРґР°СЂРєРё.",
+  mascotEmoji: "fox",
+  storeDescription: "A compact storefront for cozy handmade goods.",
+  welcomeText: "Welcome to a small handmade shop.",
+  infoBlock: "Ships with care and supports custom requests.",
+  promoTitle: "Season Pick",
+  promoText: "Candles, plaids and soft gift ideas are in focus this week.",
   adminTelegramIds: [],
   updatedAt: now
 };
 
 export const fallbackSellerSettings: SellerSettings = {
   id: "main",
-  sellerName: "РћР»СЊРіР°",
-  avatarUrl: imagePlaceholder("РћР»СЊРіР°", "#ffe3bf"),
-  shortBio: "РњР°СЃС‚РµСЂ handmade РёР· РљР°Р·Р°РЅРё.",
-  brandStory:
-    "РќР°С‡РёРЅР°Р»Р° СЃ РЅРµР±РѕР»СЊС€РёС… РїРѕРґР°СЂРєРѕРІ РґР»СЏ РґСЂСѓР·РµР№, Р° С‚РµРїРµСЂСЊ СЃРѕР·РґР°СЋ СѓСЋС‚РЅС‹Рµ СЃРµСЂРёРё РґР»СЏ РґРѕРјР° Рё РїСЂР°Р·РґРЅРёРєРѕРІ.",
-  philosophy:
-    "РњРЅРµ РІР°Р¶РЅРѕ, С‡С‚РѕР±С‹ РІРµС‰СЊ Р±С‹Р»Р° РЅРµ РїСЂРѕСЃС‚Рѕ РєСЂР°СЃРёРІРѕР№, Р° РІС‹Р·С‹РІР°Р»Р° С‡СѓРІСЃС‚РІРѕ С‚РµРїР»Р° Рё СЂР°РґРѕСЃС‚Рё РєР°Р¶РґС‹Р№ РґРµРЅСЊ.",
-  materialsFocus: "РќР°С‚СѓСЂР°Р»СЊРЅС‹Рµ Рё С‚Р°РєС‚РёР»СЊРЅРѕ РїСЂРёСЏС‚РЅС‹Рµ РјР°С‚РµСЂРёР°Р»С‹: С…Р»РѕРїРѕРє, РІРѕСЃРє, РєРµСЂР°РјРёРєР°, РґРµСЂРµРІРѕ.",
+  sellerName: "RustyLand",
+  avatarUrl: imagePlaceholder("RustyLand", "#ffe3bf"),
+  shortBio: "Handmade maker from Kazan.",
+  brandStory: "Started with gifts for friends and grew into a small studio.",
+  philosophy: "Useful, tactile and warm items that feel personal.",
+  materialsFocus: "Natural textiles, wax, ceramic and wood accents.",
   telegramUsername: "your_seller_username",
   telegramLink: "",
-  contactText: "РќР°РїРёС€РёС‚Рµ РІ Telegram, РѕС‚РІРµС‡Р°СЋ РѕР±С‹С‡РЅРѕ РІ С‚РµС‡РµРЅРёРµ С‡Р°СЃР°.",
-  aboutSeller: "Р Р°Р±РѕС‚Р°СЋ РІ РґРѕРјР°С€РЅРµРј Р°С‚РµР»СЊРµ Рё РґРµР»Р°СЋ РЅРµР±РѕР»СЊС€РёРµ Р°РІС‚РѕСЂСЃРєРёРµ СЃРµСЂРёРё.",
-  city: "РљР°Р·Р°РЅСЊ",
-  purchaseMessageTemplate: "Р—РґСЂР°РІСЃС‚РІСѓР№С‚Рµ! РҐРѕС‡Сѓ РїСЂРёРѕР±СЂРµСЃС‚Рё С‚РѕРІР°СЂ: {product}",
-  purchaseButtonLabel: "РџСЂРёРѕР±СЂРµСЃС‚Рё",
+  contactText: "Write in Telegram to discuss details.",
+  aboutSeller: "Works in a small studio and produces short runs.",
+  city: "Kazan",
+  purchaseMessageTemplate: "Hello. I want to buy: {product}",
+  purchaseButtonLabel: "Buy",
   updatedAt: now
 };
 
@@ -257,7 +259,7 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_hero",
     type: "hero",
-    title: "Р“Р»Р°РІРЅР°СЏ",
+    title: "Main Hero",
     subtitle: "",
     content: "",
     linkedCategoryId: null,
@@ -270,8 +272,8 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_new",
     type: "new_arrivals",
-    title: "РќРѕРІРёРЅРєРё",
-    subtitle: "РЎРІРµР¶РёРµ СЂР°Р±РѕС‚С‹ РјР°СЃС‚РµСЂР°",
+    title: "New Arrivals",
+    subtitle: "Fresh handmade items",
     content: "",
     linkedCategoryId: null,
     linkedProductIds: [],
@@ -283,8 +285,8 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_featured",
     type: "recommended",
-    title: "Р РµРєРѕРјРµРЅРґСѓРµРј",
-    subtitle: "РџРѕРґР±РѕСЂРєР° РЅРµРґРµР»Рё",
+    title: "Recommended",
+    subtitle: "Selection of the week",
     content: "",
     linkedCategoryId: null,
     linkedProductIds: [],
@@ -296,7 +298,7 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_giveaway",
     type: "giveaway",
-    title: "РЈС‡Р°СЃС‚РІСѓСЋС‚ РІ СЂРѕР·С‹РіСЂС‹С€Рµ",
+    title: "Giveaway",
     subtitle: "",
     content: "",
     linkedCategoryId: null,
@@ -309,8 +311,8 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_category_pick",
     type: "category_pick",
-    title: "РџРѕРґР±РѕСЂРєР° РєР°С‚РµРіРѕСЂРёРё",
-    subtitle: "РЈСЋС‚ РґР»СЏ РґРѕРјР°",
+    title: "Category Pick",
+    subtitle: "Home",
     content: "",
     linkedCategoryId: "cat_home",
     linkedProductIds: [],
@@ -322,7 +324,7 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_about",
     type: "about",
-    title: "Рћ РјР°СЃС‚РµСЂРµ",
+    title: "About",
     subtitle: "",
     content: "",
     linkedCategoryId: null,
@@ -335,9 +337,9 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_promo",
     type: "promo",
-    title: "РџСЂРѕРјРѕ-Р±Р»РѕРє",
+    title: "Promo Block",
     subtitle: "",
-    content: "РЎРѕР±РµСЂСѓ РїРѕРґР°СЂРѕС‡РЅС‹Р№ РЅР°Р±РѕСЂ РїРѕРґ РІР°С€ Р±СЋРґР¶РµС‚ Рё РїРѕРІРѕРґ.",
+    content: "A compact promo block for seasonal highlights.",
     linkedCategoryId: null,
     linkedProductIds: [],
     isEnabled: true,
@@ -348,8 +350,8 @@ export const fallbackHomepageSections: HomepageSection[] = [
   {
     id: "section_seasonal",
     type: "seasonal_pick",
-    title: "РЎРµР·РѕРЅРЅР°СЏ РїРѕРґР±РѕСЂРєР°",
-    subtitle: "РўРµРїР»С‹Рµ Р°РєС†РµРЅС‚С‹ СЃРµР·РѕРЅР°",
+    title: "Seasonal Pick",
+    subtitle: "Soft accents for the season",
     content: "",
     linkedCategoryId: null,
     linkedProductIds: ["prod_candle_luna", "prod_plaid_cloud"],
@@ -363,13 +365,25 @@ export const fallbackHomepageSections: HomepageSection[] = [
 export const fallbackGiveawaySessions: GiveawaySession[] = [
   {
     id: "giveaway_session_spring",
-    title: "Р’РµСЃРµРЅРЅРёР№ СЂРѕР·С‹РіСЂС‹С€",
-    description: "Р РѕР·С‹РіСЂС‹С€ СѓСЋС‚РЅС‹С… РїРѕРґР°СЂРєРѕРІ РґР»СЏ РїРѕРґРїРёСЃС‡РёРєРѕРІ.",
+    title: "Spring Scenario Giveaway",
+    description: "Scenario-mode session with multiple lots and saved history.",
+    mode: "scenario",
     status: "draft",
-    drawAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
+    drawAt: nextWeek,
     spinDurationMs: 6000,
     createdAt: now,
     updatedAt: now
+  },
+  {
+    id: "giveaway_session_quick_archive",
+    title: "Quick Weekend Drop",
+    description: "Completed quick giveaway example for archive view.",
+    mode: "quick",
+    status: "completed",
+    drawAt: yesterday,
+    spinDurationMs: 4000,
+    createdAt: twoDaysAgo,
+    updatedAt: yesterday
   }
 ];
 
@@ -377,10 +391,140 @@ export const fallbackGiveawayItems: GiveawayItem[] = [
   {
     id: "giveaway_item_1",
     sessionId: "giveaway_session_spring",
+    itemType: "catalog_product",
     productId: "prod_candle_luna",
+    title: "Luna Candle",
+    description: "Catalog prize from the product list.",
+    emoji: "gift",
+    imageUrl: imagePlaceholder("Luna Candle", "#ffd8b8"),
     slots: 1,
-    isActive: true
+    isActive: true,
+    createdAt: now
+  },
+  {
+    id: "giveaway_item_2",
+    sessionId: "giveaway_session_spring",
+    itemType: "special_prize",
+    productId: null,
+    title: "Free Gift Wrap",
+    description: "Special prize without product binding.",
+    emoji: "wrap",
+    imageUrl: "",
+    slots: 1,
+    isActive: true,
+    createdAt: now
+  },
+  {
+    id: "giveaway_item_3",
+    sessionId: "giveaway_session_quick_archive",
+    itemType: "catalog_product",
+    productId: "prod_bunny",
+    title: "Plush Bunny",
+    description: "Archived catalog prize.",
+    emoji: "toy",
+    imageUrl: imagePlaceholder("Plush Bunny", "#ffd2ad"),
+    slots: 1,
+    isActive: false,
+    createdAt: twoDaysAgo
   }
 ];
 
-export const fallbackGiveawayResults: GiveawayResult[] = [];
+export const fallbackGiveawayParticipants: GiveawayParticipant[] = [
+  {
+    id: "giveaway_participant_1",
+    sessionId: "giveaway_session_spring",
+    nickname: "@demo_winner",
+    comment: "Seed participant",
+    createdAt: now
+  },
+  {
+    id: "giveaway_participant_2",
+    sessionId: "giveaway_session_spring",
+    nickname: "@lucky_follower",
+    comment: "",
+    createdAt: now
+  },
+  {
+    id: "giveaway_participant_3",
+    sessionId: "giveaway_session_quick_archive",
+    nickname: "@archive_user",
+    comment: "Won in demo archive session",
+    createdAt: twoDaysAgo
+  }
+];
+
+export const fallbackGiveawayResults: GiveawayResult[] = [
+  {
+    id: "giveaway_result_1",
+    sessionId: "giveaway_session_quick_archive",
+    giveawayItemId: "giveaway_item_3",
+    itemType: "catalog_product",
+    productId: "prod_bunny",
+    participantId: "giveaway_participant_3",
+    prizeTitle: "Plush Bunny",
+    profileId: null,
+    winnerNickname: "@archive_user",
+    spinDurationMs: 4000,
+    wonAt: yesterday,
+    note: "Quick demo win"
+  }
+];
+
+export const fallbackGiveawayEvents: GiveawayEvent[] = [
+  {
+    id: "giveaway_event_1",
+    sessionId: "giveaway_session_spring",
+    type: "session_created",
+    message: "Scenario giveaway session created.",
+    createdAt: now
+  },
+  {
+    id: "giveaway_event_2",
+    sessionId: "giveaway_session_spring",
+    type: "lot_added",
+    message: "Catalog prize Luna Candle added.",
+    createdAt: now
+  },
+  {
+    id: "giveaway_event_3",
+    sessionId: "giveaway_session_spring",
+    type: "lot_added",
+    message: "Special prize Free Gift Wrap added.",
+    createdAt: now
+  },
+  {
+    id: "giveaway_event_4",
+    sessionId: "giveaway_session_spring",
+    type: "participant_added",
+    message: "Participant @demo_winner added.",
+    createdAt: now
+  },
+  {
+    id: "giveaway_event_5",
+    sessionId: "giveaway_session_quick_archive",
+    type: "session_created",
+    message: "Quick giveaway session created.",
+    createdAt: twoDaysAgo
+  },
+  {
+    id: "giveaway_event_6",
+    sessionId: "giveaway_session_quick_archive",
+    type: "spin_started",
+    message: "Spin started for Plush Bunny.",
+    createdAt: yesterday
+  },
+  {
+    id: "giveaway_event_7",
+    sessionId: "giveaway_session_quick_archive",
+    type: "result_recorded",
+    message: "@archive_user won Plush Bunny.",
+    createdAt: yesterday
+  },
+  {
+    id: "giveaway_event_8",
+    sessionId: "giveaway_session_quick_archive",
+    type: "session_completed",
+    message: "Quick giveaway session completed.",
+    createdAt: yesterday
+  }
+];

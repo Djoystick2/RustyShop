@@ -31,6 +31,8 @@ import type { AppRepository } from "../data/repositories/contracts";
 import type {
   AppState,
   CategoryInput,
+  GiveawayItemInput,
+  GiveawayParticipantInput,
   GiveawaySessionInput,
   GiveawaySessionPatch as SessionPatchInput,
   GiveawaySpinInput as SpinInput,
@@ -107,7 +109,10 @@ interface AppContextValue {
   updateGiveawaySession: (sessionId: string, patch: SessionPatchInput) => Promise<boolean>;
   updateGiveawaySessionStatus: (sessionId: string, status: GiveawaySessionStatus) => Promise<boolean>;
   attachProductToGiveaway: (sessionId: string, productId: string) => Promise<boolean>;
+  saveSpecialGiveawayItem: (input: GiveawayItemInput) => Promise<boolean>;
   removeGiveawayItem: (itemId: string) => Promise<boolean>;
+  saveGiveawayParticipant: (input: GiveawayParticipantInput) => Promise<boolean>;
+  removeGiveawayParticipant: (participantId: string) => Promise<boolean>;
   runGiveawaySpin: (input: SpinInput) => Promise<boolean>;
   canUploadProductImages: boolean;
 }
@@ -938,6 +943,10 @@ export function AppProvider({ children }: PropsWithChildren) {
       if (!guardAdminAction()) {
         return false;
       }
+      const product = state.products.find((item) => item.id === productId);
+      if (!product) {
+        return false;
+      }
       const existing = state.giveawayItems.find(
         (item) => item.sessionId === sessionId && item.productId === productId
       );
@@ -948,9 +957,15 @@ export function AppProvider({ children }: PropsWithChildren) {
           repository.saveGiveawayItem({
             id: existing?.id ?? (repository.kind === "supabase" ? createUuid() : createId("giveaway_item")),
             sessionId,
+            itemType: "catalog_product",
             productId,
+            title: product.title,
+            description: product.description,
+            emoji: "",
+            imageUrl: "",
             slots: existing?.slots ?? 1,
-            isActive: true
+            isActive: true,
+            createdAt: existing?.createdAt ?? new Date().toISOString()
           })
         );
 
@@ -970,7 +985,50 @@ export function AppProvider({ children }: PropsWithChildren) {
         return false;
       }
     },
-    [guardAdminAction, repository, runWithSaving, state.giveawayItems, syncSupabaseState]
+    [guardAdminAction, repository, runWithSaving, state.giveawayItems, state.products, syncSupabaseState]
+  );
+
+  const saveSpecialGiveawayItem = useCallback(
+    async (input: GiveawayItemInput) => {
+      if (!guardAdminAction()) {
+        return false;
+      }
+      setActionError(null);
+
+      try {
+        const saved = await runWithSaving("giveaway", () =>
+          repository.saveGiveawayItem({
+            id: input.id ?? (repository.kind === "supabase" ? createUuid() : createId("giveaway_item")),
+            sessionId: input.sessionId,
+            itemType: "special_prize",
+            productId: null,
+            title: input.title.trim(),
+            description: input.description.trim(),
+            emoji: input.emoji.trim(),
+            imageUrl: input.imageUrl.trim(),
+            slots: input.slots ?? 1,
+            isActive: input.isActive ?? true,
+            createdAt: new Date().toISOString()
+          })
+        );
+
+        setState((prev) => {
+          const exists = prev.giveawayItems.some((item) => item.id === saved.id);
+          return {
+            ...prev,
+            giveawayItems: exists
+              ? prev.giveawayItems.map((item) => (item.id === saved.id ? saved : item))
+              : [...prev.giveawayItems, saved]
+          };
+        });
+        await syncSupabaseState();
+        return true;
+      } catch (error) {
+        setActionError(mapError(error));
+        return false;
+      }
+    },
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
   const removeGiveawayItem = useCallback(
@@ -984,6 +1042,61 @@ export function AppProvider({ children }: PropsWithChildren) {
         setState((prev) => ({
           ...prev,
           giveawayItems: prev.giveawayItems.filter((item) => item.id !== itemId)
+        }));
+        await syncSupabaseState();
+        return true;
+      } catch (error) {
+        setActionError(mapError(error));
+        return false;
+      }
+    },
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
+  );
+
+  const saveGiveawayParticipant = useCallback(
+    async (input: GiveawayParticipantInput) => {
+      if (!guardAdminAction()) {
+        return false;
+      }
+      if (!input.nickname.trim()) {
+        return false;
+      }
+      setActionError(null);
+      try {
+        const saved = await runWithSaving("giveaway", () =>
+          repository.saveGiveawayParticipant({
+            id: repository.kind === "supabase" ? createUuid() : createId("giveaway_participant"),
+            sessionId: input.sessionId,
+            nickname: input.nickname.trim(),
+            comment: input.comment?.trim() ?? "",
+            createdAt: new Date().toISOString()
+          })
+        );
+        setState((prev) => ({
+          ...prev,
+          giveawayParticipants: [...prev.giveawayParticipants, saved]
+        }));
+        await syncSupabaseState();
+        return true;
+      } catch (error) {
+        setActionError(mapError(error));
+        return false;
+      }
+    },
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
+  );
+
+  const removeGiveawayParticipant = useCallback(
+    async (participantId: string) => {
+      if (!guardAdminAction()) {
+        return false;
+      }
+      setActionError(null);
+      try {
+        await runWithSaving("giveaway", () => repository.removeGiveawayParticipant(participantId));
+        setState((prev) => ({
+          ...prev,
+          giveawayParticipants: prev.giveawayParticipants.filter((item) => item.id !== participantId)
         }));
         await syncSupabaseState();
         return true;
@@ -1018,27 +1131,17 @@ export function AppProvider({ children }: PropsWithChildren) {
                   item.id === payload.updatedItem!.id ? payload.updatedItem! : item
                 );
 
-          const hasRemaining = nextItems.some(
-            (item) => item.sessionId === input.sessionId && item.isActive
-          );
-
-          const nextSessions = hasRemaining
-            ? prev.giveawaySessions
-            : prev.giveawaySessions.map((session) =>
-                session.id === input.sessionId
-                  ? {
-                      ...session,
-                      status: "completed" as const,
-                      updatedAt: new Date().toISOString()
-                    }
-                  : session
-              );
-
           return {
             ...prev,
             giveawayItems: nextItems,
             giveawayResults: [payload.result, ...prev.giveawayResults],
-            giveawaySessions: nextSessions
+            giveawaySessions:
+              payload.updatedSession === null
+                ? prev.giveawaySessions
+                : prev.giveawaySessions.map((session) =>
+                    session.id === payload.updatedSession!.id ? payload.updatedSession! : session
+                  ),
+            giveawayEvents: [...payload.createdEvents, ...prev.giveawayEvents]
           };
         });
         await syncSupabaseState();
@@ -1090,7 +1193,10 @@ export function AppProvider({ children }: PropsWithChildren) {
       updateGiveawaySession,
       updateGiveawaySessionStatus,
       attachProductToGiveaway,
+      saveSpecialGiveawayItem,
       removeGiveawayItem,
+      saveGiveawayParticipant,
+      removeGiveawayParticipant,
       runGiveawaySpin,
       canUploadProductImages: Boolean(repository.uploadProductImages)
     }),
@@ -1133,7 +1239,10 @@ export function AppProvider({ children }: PropsWithChildren) {
       toggleProductVisibility,
       updateGiveawaySessionStatus,
       removeGiveawayItem,
+      removeGiveawayParticipant,
       runGiveawaySpin,
+      saveGiveawayParticipant,
+      saveSpecialGiveawayItem,
       updateSellerSettings,
       updateStoreSettings
     ]

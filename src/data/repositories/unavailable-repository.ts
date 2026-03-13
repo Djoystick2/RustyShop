@@ -3,7 +3,15 @@ import type {
   BootstrapContext,
   UpsertProductPayload
 } from "./contracts";
-import type { Category, GiveawayItem, HomepageSection, Product, SellerSettings, StoreSettings } from "../../types/entities";
+import type {
+  Category,
+  GiveawayItem,
+  GiveawayParticipant,
+  HomepageSection,
+  Product,
+  SellerSettings,
+  StoreSettings
+} from "../../types/entities";
 import type { GiveawaySessionInput, GiveawaySessionPatch } from "../state";
 
 function fail(message: string): never {
@@ -62,6 +70,12 @@ export function createUnavailableRepository(message: string): AppRepository {
       fail(message);
     },
     async removeGiveawayItem() {
+      fail(message);
+    },
+    async saveGiveawayParticipant(_: GiveawayParticipant) {
+      fail(message);
+    },
+    async removeGiveawayParticipant() {
       fail(message);
     },
     async createGiveawayResult() {

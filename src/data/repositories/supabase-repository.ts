@@ -7,8 +7,10 @@ import type { AppRepository, BootstrapContext } from "./contracts";
 import {
   mapCategory,
   mapFavorite,
+  mapGiveawayEvent,
   mapHomepageSection,
   mapGiveawayItem,
+  mapGiveawayParticipant,
   mapGiveawayResult,
   mapGiveawaySession,
   mapProduct,
@@ -227,6 +229,41 @@ async function selectOrderedTable(client: SupabaseClient, table: string, orderBy
   return client.from(table).select("*").order(orderBy as never, { ascending: true });
 }
 
+async function insertGiveawayEvent(
+  client: SupabaseClient,
+  params: {
+    sessionId: string;
+    type:
+      | "session_created"
+      | "session_updated"
+      | "session_status_changed"
+      | "lot_added"
+      | "lot_removed"
+      | "participant_added"
+      | "participant_removed"
+      | "spin_started"
+      | "result_recorded"
+      | "session_completed";
+    message: string;
+  }
+) {
+  const insertResult = await client
+    .from("giveaway_events")
+    .insert({
+      id: createUuid(),
+      session_id: params.sessionId,
+      event_type: params.type,
+      message: params.message
+    })
+    .select("*");
+
+  return mapGiveawayEvent(
+    unwrapMutationRow(insertResult.data, insertResult.error, {
+      noRowMessage: "Giveaway event was not saved."
+    })
+  );
+}
+
 export function createSupabaseRepository(): AppRepository {
   return {
     kind: "supabase",
@@ -245,7 +282,9 @@ export function createSupabaseRepository(): AppRepository {
         homepageSectionsResult,
         sessionsResult,
         itemsResult,
-        resultsResult
+        participantsResult,
+        resultsResult,
+        eventsResult
       ] = await Promise.all([
         selectOrderedTable(client, "categories", "sort_order"),
         selectOrderedTable(client, "products", "created_at"),
@@ -255,7 +294,9 @@ export function createSupabaseRepository(): AppRepository {
         selectOrderedTable(client, "homepage_sections", "sort_order"),
         selectOrderedTable(client, "giveaway_sessions", "created_at"),
         selectOrderedTable(client, "giveaway_items", "created_at"),
-        selectOrderedTable(client, "giveaway_results", "won_at")
+        selectOrderedTable(client, "giveaway_participants", "created_at"),
+        selectOrderedTable(client, "giveaway_results", "won_at"),
+        selectOrderedTable(client, "giveaway_events", "created_at")
       ]);
 
       if (categoriesResult.error && !isAuthBootstrapError(categoriesResult.error)) {
@@ -282,8 +323,14 @@ export function createSupabaseRepository(): AppRepository {
       if (itemsResult.error && !isAuthBootstrapError(itemsResult.error)) {
         throw new Error(formatDbError(itemsResult.error));
       }
+      if (participantsResult.error && !isAuthBootstrapError(participantsResult.error)) {
+        throw new Error(formatDbError(participantsResult.error));
+      }
       if (resultsResult.error && !isAuthBootstrapError(resultsResult.error)) {
         throw new Error(formatDbError(resultsResult.error));
+      }
+      if (eventsResult.error && !isAuthBootstrapError(eventsResult.error)) {
+        throw new Error(formatDbError(eventsResult.error));
       }
 
       const activeProfile = profile ?? buildGuestProfile(context);
@@ -340,9 +387,15 @@ export function createSupabaseRepository(): AppRepository {
         giveawayItems: itemsResult.error
           ? fallback.giveawayItems
           : (itemsResult.data ?? []).map(mapGiveawayItem),
+        giveawayParticipants: participantsResult.error
+          ? fallback.giveawayParticipants
+          : (participantsResult.data ?? []).map(mapGiveawayParticipant),
         giveawayResults: resultsResult.error
           ? fallback.giveawayResults
-          : (resultsResult.data ?? []).map(mapGiveawayResult)
+          : (resultsResult.data ?? []).map(mapGiveawayResult),
+        giveawayEvents: eventsResult.error
+          ? fallback.giveawayEvents
+          : (eventsResult.data ?? []).map(mapGiveawayEvent)
       };
     },
     async reloadProfile(currentProfileId, context) {
@@ -753,17 +806,24 @@ export function createSupabaseRepository(): AppRepository {
         .insert({
           title: input.title.trim(),
           description: input.description.trim(),
+          mode: input.mode ?? "scenario",
           draw_at: input.drawAt,
           status: "draft",
           spin_duration_ms: spinDurationMs
         })
         .select("*");
 
-      return mapGiveawaySession(
+      const session = mapGiveawaySession(
         unwrapMutationRow(data, error, {
           noRowMessage: "Сессия розыгрыша не создана: нет прав или запись недоступна."
         })
       );
+      await insertGiveawayEvent(client, {
+        sessionId: session.id,
+        type: "session_created",
+        message: `Session "${session.title}" created.`
+      });
+      return session;
     },
     async updateGiveawaySession(sessionId: string, patch: GiveawaySessionPatch) {
       const client = assertClient();
@@ -772,6 +832,7 @@ export function createSupabaseRepository(): AppRepository {
       const nextPatch: Record<string, unknown> = {
         title: patch.title,
         description: patch.description,
+        mode: patch.mode,
         draw_at: patch.drawAt,
         status: patch.status
       };
@@ -786,11 +847,17 @@ export function createSupabaseRepository(): AppRepository {
         .eq("id", safeSessionId)
         .select("*");
 
-      return mapGiveawaySession(
+      const session = mapGiveawaySession(
         unwrapMutationRow(data, error, {
           noRowMessage: "Сессия розыгрыша не обновлена: запись не найдена или нет прав."
         })
       );
+      await insertGiveawayEvent(client, {
+        sessionId: session.id,
+        type: "session_updated",
+        message: `Session "${session.title}" updated.`
+      });
+      return session;
     },
     async updateGiveawaySessionStatus(sessionId, status) {
       const client = assertClient();
@@ -801,17 +868,23 @@ export function createSupabaseRepository(): AppRepository {
         .eq("id", safeSessionId)
         .select("*");
 
-      return mapGiveawaySession(
+      const session = mapGiveawaySession(
         unwrapMutationRow(data, error, {
           noRowMessage: "Статус сессии не обновлен: запись не найдена или нет прав."
         })
       );
+      await insertGiveawayEvent(client, {
+        sessionId: session.id,
+        type: status === "completed" ? "session_completed" : "session_status_changed",
+        message: `Session moved to ${status}.`
+      });
+      return session;
     },
     async saveGiveawayItem(item) {
       const client = assertClient();
       const safeItemId = assertUuid(item.id, "giveawayItem.id");
       const safeSessionId = assertUuid(item.sessionId, "giveawayItem.sessionId");
-      const safeProductId = assertUuid(item.productId, "giveawayItem.productId");
+      const safeProductId = isUuid(item.productId) ? item.productId : null;
 
       const { data, error } = await client
         .from("giveaway_items")
@@ -819,33 +892,139 @@ export function createSupabaseRepository(): AppRepository {
           {
             id: safeItemId,
             session_id: safeSessionId,
+            item_type: item.itemType,
             product_id: safeProductId,
+            title: item.title,
+            description: item.description,
+            emoji: item.emoji,
+            image_url: item.imageUrl,
             slots: item.slots,
             is_active: item.isActive
           },
-          { onConflict: "session_id,product_id" }
+          item.itemType === "catalog_product" && safeProductId
+            ? { onConflict: "session_id,product_id" }
+            : undefined
         )
         .select("*");
 
-      return mapGiveawayItem(
+      const saved = mapGiveawayItem(
         unwrapMutationRow(data, error, {
           noRowMessage: "Лот не сохранен: запись недоступна или нет прав."
         })
       );
+      await insertGiveawayEvent(client, {
+        sessionId: saved.sessionId,
+        type: "lot_added",
+        message: `Lot "${saved.title}" saved.`
+      });
+      return saved;
     },
     async removeGiveawayItem(itemId: string) {
       const client = assertClient();
       const safeItemId = assertUuid(itemId, "giveawayItem.id");
+      const itemLookup = await client.from("giveaway_items").select("*").eq("id", safeItemId).limit(2);
+      const itemRow = unwrapOptionalRow(itemLookup.data, itemLookup.error, {
+        context: "giveaway item by id",
+        onMultiple: "first"
+      });
+      if (!itemRow) {
+        return;
+      }
+
+      const resultLookup = await client
+        .from("giveaway_results")
+        .select("id")
+        .eq("giveaway_item_id", safeItemId)
+        .limit(1);
+
+      if (resultLookup.error) {
+        throw new Error(formatDbError(resultLookup.error));
+      }
+      if ((resultLookup.data ?? []).length > 0) {
+        throw new Error("Lot cannot be deleted because it is already present in giveaway history.");
+      }
+
       const { error } = await client.from("giveaway_items").delete().eq("id", safeItemId);
       if (error) {
         throw new Error(formatDbError(error));
       }
+      await insertGiveawayEvent(client, {
+        sessionId: itemRow.session_id,
+        type: "lot_removed",
+        message: `Lot "${itemRow.title}" removed.`
+      });
+    },
+    async saveGiveawayParticipant(participant) {
+      const client = assertClient();
+      const safeParticipantId = assertUuid(participant.id, "giveawayParticipant.id");
+      const safeSessionId = assertUuid(participant.sessionId, "giveawayParticipant.sessionId");
+      const { data, error } = await client
+        .from("giveaway_participants")
+        .upsert({
+          id: safeParticipantId,
+          session_id: safeSessionId,
+          nickname: participant.nickname,
+          comment: participant.comment
+        })
+        .select("*");
+
+      const saved = mapGiveawayParticipant(
+        unwrapMutationRow(data, error, {
+          noRowMessage: "Participant was not saved."
+        })
+      );
+      await insertGiveawayEvent(client, {
+        sessionId: saved.sessionId,
+        type: "participant_added",
+        message: `Participant "${saved.nickname}" saved.`
+      });
+      return saved;
+    },
+    async removeGiveawayParticipant(participantId: string) {
+      const client = assertClient();
+      const safeParticipantId = assertUuid(participantId, "giveawayParticipant.id");
+      const participantLookup = await client
+        .from("giveaway_participants")
+        .select("*")
+        .eq("id", safeParticipantId)
+        .limit(2);
+      const participantRow = unwrapOptionalRow(participantLookup.data, participantLookup.error, {
+        context: "giveaway participant by id",
+        onMultiple: "first"
+      });
+      if (!participantRow) {
+        return;
+      }
+
+      const resultLookup = await client
+        .from("giveaway_results")
+        .select("id")
+        .eq("participant_id", safeParticipantId)
+        .limit(1);
+
+      if (resultLookup.error) {
+        throw new Error(formatDbError(resultLookup.error));
+      }
+      if ((resultLookup.data ?? []).length > 0) {
+        throw new Error("Participant cannot be deleted because giveaway history already references them.");
+      }
+
+      const { error } = await client.from("giveaway_participants").delete().eq("id", safeParticipantId);
+      if (error) {
+        throw new Error(formatDbError(error));
+      }
+      await insertGiveawayEvent(client, {
+        sessionId: participantRow.session_id,
+        type: "participant_removed",
+        message: `Participant "${participantRow.nickname}" removed.`
+      });
     },
     async createGiveawayResult(input) {
       const client = assertClient();
       const safeSessionId = assertUuid(input.sessionId, "giveawayResult.sessionId");
-      const safeProductId = assertUuid(input.productId, "giveawayResult.productId");
       const safeGiveawayItemId = assertUuid(input.giveawayItemId, "giveawayResult.giveawayItemId");
+      const safeProductId = isUuid(input.productId) ? input.productId : null;
+      const safeParticipantId = isUuid(input.participantId) ? input.participantId : null;
       const safeProfileId = isUuid(input.profileId) ? input.profileId : null;
 
       const insertResult = await client
@@ -853,7 +1032,11 @@ export function createSupabaseRepository(): AppRepository {
         .insert({
           id: createUuid(),
           session_id: safeSessionId,
+          giveaway_item_id: safeGiveawayItemId,
+          item_type: input.itemType,
           product_id: safeProductId,
+          participant_id: safeParticipantId,
+          prize_title: input.prizeTitle,
           profile_id: safeProfileId,
           winner_nickname: input.winnerNickname,
           spin_duration_ms: input.spinDurationMs,
@@ -885,20 +1068,46 @@ export function createSupabaseRepository(): AppRepository {
         throw new Error(formatDbError(remainingResult.error));
       }
 
+      const createdEvents = [
+        await insertGiveawayEvent(client, {
+          sessionId: safeSessionId,
+          type: "spin_started",
+          message: `Spin started for "${input.prizeTitle}".`
+        }),
+        await insertGiveawayEvent(client, {
+          sessionId: safeSessionId,
+          type: "result_recorded",
+          message: `${input.winnerNickname || "Unnamed participant"} won "${input.prizeTitle}".`
+        })
+      ];
+
+      let updatedSession = null;
       if ((remainingResult.data?.length ?? 0) === 0) {
         const completeResult = await client
           .from("giveaway_sessions")
           .update({ status: "completed" })
-          .eq("id", safeSessionId);
+          .eq("id", safeSessionId)
+          .select("*");
 
-        if (completeResult.error) {
-          throw new Error(formatDbError(completeResult.error));
-        }
+        updatedSession = mapGiveawaySession(
+          unwrapMutationRow(completeResult.data, completeResult.error, {
+            noRowMessage: "Session status was not updated after final spin."
+          })
+        );
+        createdEvents.push(
+          await insertGiveawayEvent(client, {
+            sessionId: safeSessionId,
+            type: "session_completed",
+            message: `Session "${updatedSession.title}" completed.`
+          })
+        );
       }
 
       return {
         result: mapGiveawayResult(resultRow),
-        updatedItem: mapGiveawayItem(itemRow)
+        updatedItem: mapGiveawayItem(itemRow),
+        updatedSession,
+        createdEvents
       };
     },
     async listGiveawayResults() {

@@ -283,6 +283,7 @@ export interface Database {
           id: string;
           title: string;
           description: string;
+          mode: "quick" | "scenario";
           status: Database["public"]["Enums"]["giveaway_session_status"];
           draw_at: string;
           spin_duration_ms: number;
@@ -293,6 +294,7 @@ export interface Database {
           id?: string;
           title: string;
           description?: string;
+          mode?: "quick" | "scenario";
           status?: Database["public"]["Enums"]["giveaway_session_status"];
           draw_at: string;
           spin_duration_ms?: number;
@@ -303,6 +305,7 @@ export interface Database {
           id?: string;
           title?: string;
           description?: string;
+          mode?: "quick" | "scenario";
           status?: Database["public"]["Enums"]["giveaway_session_status"];
           draw_at?: string;
           spin_duration_ms?: number;
@@ -314,7 +317,12 @@ export interface Database {
         Row: {
           id: string;
           session_id: string;
-          product_id: string;
+          item_type: "catalog_product" | "special_prize";
+          product_id: string | null;
+          title: string;
+          description: string;
+          emoji: string;
+          image_url: string;
           slots: number;
           is_active: boolean;
           created_at: string;
@@ -322,7 +330,12 @@ export interface Database {
         Insert: {
           id?: string;
           session_id: string;
-          product_id: string;
+          item_type?: "catalog_product" | "special_prize";
+          product_id?: string | null;
+          title?: string;
+          description?: string;
+          emoji?: string;
+          image_url?: string;
           slots?: number;
           is_active?: boolean;
           created_at?: string;
@@ -330,9 +343,37 @@ export interface Database {
         Update: {
           id?: string;
           session_id?: string;
-          product_id?: string;
+          item_type?: "catalog_product" | "special_prize";
+          product_id?: string | null;
+          title?: string;
+          description?: string;
+          emoji?: string;
+          image_url?: string;
           slots?: number;
           is_active?: boolean;
+          created_at?: string;
+        };
+      };
+      giveaway_participants: {
+        Row: {
+          id: string;
+          session_id: string;
+          nickname: string;
+          comment: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          nickname: string;
+          comment?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          nickname?: string;
+          comment?: string;
           created_at?: string;
         };
       };
@@ -340,7 +381,11 @@ export interface Database {
         Row: {
           id: string;
           session_id: string;
-          product_id: string;
+          giveaway_item_id: string;
+          item_type: "catalog_product" | "special_prize";
+          product_id: string | null;
+          participant_id: string | null;
+          prize_title: string;
           profile_id: string | null;
           winner_nickname: string;
           spin_duration_ms: number;
@@ -350,7 +395,11 @@ export interface Database {
         Insert: {
           id?: string;
           session_id: string;
-          product_id: string;
+          giveaway_item_id: string;
+          item_type?: "catalog_product" | "special_prize";
+          product_id?: string | null;
+          participant_id?: string | null;
+          prize_title?: string;
           profile_id?: string | null;
           winner_nickname?: string;
           spin_duration_ms?: number;
@@ -360,12 +409,69 @@ export interface Database {
         Update: {
           id?: string;
           session_id?: string;
-          product_id?: string;
+          giveaway_item_id?: string;
+          item_type?: "catalog_product" | "special_prize";
+          product_id?: string | null;
+          participant_id?: string | null;
+          prize_title?: string;
           profile_id?: string | null;
           winner_nickname?: string;
           spin_duration_ms?: number;
           won_at?: string;
           note?: string;
+        };
+      };
+      giveaway_events: {
+        Row: {
+          id: string;
+          session_id: string;
+          event_type:
+            | "session_created"
+            | "session_updated"
+            | "session_status_changed"
+            | "lot_added"
+            | "lot_removed"
+            | "participant_added"
+            | "participant_removed"
+            | "spin_started"
+            | "result_recorded"
+            | "session_completed";
+          message: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          event_type:
+            | "session_created"
+            | "session_updated"
+            | "session_status_changed"
+            | "lot_added"
+            | "lot_removed"
+            | "participant_added"
+            | "participant_removed"
+            | "spin_started"
+            | "result_recorded"
+            | "session_completed";
+          message: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          event_type?:
+            | "session_created"
+            | "session_updated"
+            | "session_status_changed"
+            | "lot_added"
+            | "lot_removed"
+            | "participant_added"
+            | "participant_removed"
+            | "spin_started"
+            | "result_recorded"
+            | "session_completed";
+          message?: string;
+          created_at?: string;
         };
       };
       homepage_sections: {

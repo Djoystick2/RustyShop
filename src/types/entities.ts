@@ -2,6 +2,19 @@ export type UserRole = "user" | "admin";
 
 export type ProductStatus = "new" | "popular" | "sold_out";
 export type GiveawaySessionStatus = "draft" | "active" | "completed";
+export type GiveawaySessionMode = "quick" | "scenario";
+export type GiveawayItemType = "catalog_product" | "special_prize";
+export type GiveawayEventType =
+  | "session_created"
+  | "session_updated"
+  | "session_status_changed"
+  | "lot_added"
+  | "lot_removed"
+  | "participant_added"
+  | "participant_removed"
+  | "spin_started"
+  | "result_recorded"
+  | "session_completed";
 export type HomepageSectionType =
   | "hero"
   | "new_arrivals"
@@ -118,6 +131,7 @@ export interface GiveawaySession {
   id: string;
   title: string;
   description: string;
+  mode: GiveawaySessionMode;
   status: GiveawaySessionStatus;
   drawAt: string;
   spinDurationMs: number;
@@ -128,18 +142,44 @@ export interface GiveawaySession {
 export interface GiveawayItem {
   id: string;
   sessionId: string;
-  productId: string;
+  itemType: GiveawayItemType;
+  productId: string | null;
+  title: string;
+  description: string;
+  emoji: string;
+  imageUrl: string;
   slots: number;
   isActive: boolean;
+  createdAt: string;
+}
+
+export interface GiveawayParticipant {
+  id: string;
+  sessionId: string;
+  nickname: string;
+  comment: string;
+  createdAt: string;
 }
 
 export interface GiveawayResult {
   id: string;
   sessionId: string;
-  productId: string;
+  giveawayItemId: string;
+  itemType: GiveawayItemType;
+  productId: string | null;
+  participantId: string | null;
+  prizeTitle: string;
   profileId: string | null;
   winnerNickname: string;
   spinDurationMs: number;
   wonAt: string;
   note: string;
+}
+
+export interface GiveawayEvent {
+  id: string;
+  sessionId: string;
+  type: GiveawayEventType;
+  message: string;
+  createdAt: string;
 }

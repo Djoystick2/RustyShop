@@ -2101,6 +2101,63 @@ small {
     grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
     align-items: start;
   }
+
+  .giveaway-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.giveaway-module {
+  --giveaway-border: rgba(255, 255, 255, 0.08);
+}
+
+.giveaway-stat-grid,
+.giveaway-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.giveaway-stat-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.giveaway-mini-card,
+.giveaway-panel {
+  border: 1px solid var(--giveaway-border);
+}
+
+.giveaway-mini-card strong {
+  display: block;
+  font-size: 1.45rem;
+}
+
+.giveaway-list,
+.giveaway-log {
+  display: grid;
+  gap: 10px;
+}
+
+.giveaway-list__row,
+.giveaway-log__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--giveaway-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.giveaway-list__row_button {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+}
+
+.giveaway-list__row_active {
+  border-color: rgba(255, 178, 111, 0.55);
+  background: rgba(255, 178, 111, 0.1);
 }
 
 @media (prefers-reduced-motion: reduce) {

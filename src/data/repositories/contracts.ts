@@ -2,8 +2,10 @@ import type { TelegramWebAppUser } from "../../types/telegram";
 import type {
   Category,
   Favorite,
+  GiveawayEvent,
   HomepageSection,
   GiveawayItem,
+  GiveawayParticipant,
   GiveawayResult,
   GiveawaySession,
   GiveawaySessionStatus,
@@ -60,9 +62,13 @@ export interface AppRepository {
   ): Promise<GiveawaySession>;
   saveGiveawayItem(item: GiveawayItem): Promise<GiveawayItem>;
   removeGiveawayItem(itemId: string): Promise<void>;
+  saveGiveawayParticipant(participant: GiveawayParticipant): Promise<GiveawayParticipant>;
+  removeGiveawayParticipant(participantId: string): Promise<void>;
   createGiveawayResult(input: GiveawaySpinInput & { profileId: string | null }): Promise<{
     result: GiveawayResult;
     updatedItem: GiveawayItem | null;
+    updatedSession: GiveawaySession | null;
+    createdEvents: GiveawayEvent[];
   }>;
   listGiveawayResults(): Promise<GiveawayResult[]>;
 }

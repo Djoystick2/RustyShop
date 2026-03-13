@@ -2,7 +2,7 @@ import type { GiveawayItem, Product } from "../../types/entities";
 
 export interface GiveawayWheelSegment {
   giveawayItemId: string;
-  productId: string;
+  productId: string | null;
   label: string;
   color: string;
 }
@@ -13,10 +13,12 @@ export function listProductsAvailableForGiveawaySession(
   products: Product[],
   sessionItems: GiveawayItem[]
 ): Product[] {
-  const sessionProductIds = new Set(sessionItems.map((item) => item.productId));
+  const sessionProductIds = new Set(
+    sessionItems
+      .filter((item) => item.itemType === "catalog_product" && item.productId)
+      .map((item) => item.productId)
+  );
 
-  // Giveaway history remains informational. Only products already attached to
-  // the current session are excluded from the current lot picker.
   return products
     .filter((product) => product.status !== "sold_out")
     .filter((product) => !sessionProductIds.has(product.id));
@@ -29,11 +31,11 @@ export function buildGiveawayWheelSegments(
   return items
     .filter((item) => item.isActive)
     .map((item, index) => {
-      const product = products.find((candidate) => candidate.id === item.productId);
+      const product = item.productId ? products.find((candidate) => candidate.id === item.productId) : null;
       return {
         giveawayItemId: item.id,
         productId: item.productId,
-        label: product?.title ?? "Лот без названия",
+        label: item.title || product?.title || "Giveaway lot",
         color: wheelPalette[index % wheelPalette.length]
       };
     });

@@ -1,8 +1,10 @@
 import type {
   Category,
   Favorite,
+  GiveawayEvent,
   HomepageSection,
   GiveawayItem,
+  GiveawayParticipant,
   GiveawayResult,
   GiveawaySession,
   Product,
@@ -14,7 +16,9 @@ import type {
 import {
   fallbackCategories,
   fallbackFavorites,
+  fallbackGiveawayEvents,
   fallbackGiveawayItems,
+  fallbackGiveawayParticipants,
   fallbackGiveawayResults,
   fallbackGiveawaySessions,
   fallbackHomepageSections,
@@ -37,7 +41,9 @@ export interface AppState {
   homepageSections: HomepageSection[];
   giveawaySessions: GiveawaySession[];
   giveawayItems: GiveawayItem[];
+  giveawayParticipants: GiveawayParticipant[];
   giveawayResults: GiveawayResult[];
+  giveawayEvents: GiveawayEvent[];
   searchQuery: string;
 }
 
@@ -53,7 +59,9 @@ export interface BootstrapPayload {
   homepageSections: HomepageSection[];
   giveawaySessions: GiveawaySession[];
   giveawayItems: GiveawayItem[];
+  giveawayParticipants: GiveawayParticipant[];
   giveawayResults: GiveawayResult[];
+  giveawayEvents: GiveawayEvent[];
 }
 
 export interface ProductInput {
@@ -89,6 +97,7 @@ export interface CategoryInput {
 export interface GiveawaySessionInput {
   title: string;
   description: string;
+  mode?: GiveawaySession["mode"];
   drawAt: string;
   spinDurationMs?: number;
 }
@@ -96,15 +105,38 @@ export interface GiveawaySessionInput {
 export interface GiveawaySessionPatch {
   title?: string;
   description?: string;
+  mode?: GiveawaySession["mode"];
   drawAt?: string;
   status?: GiveawaySession["status"];
   spinDurationMs?: number;
 }
 
+export interface GiveawayParticipantInput {
+  sessionId: string;
+  nickname: string;
+  comment?: string;
+}
+
+export interface GiveawayItemInput {
+  id?: string;
+  sessionId: string;
+  itemType: GiveawayItem["itemType"];
+  productId?: string | null;
+  title: string;
+  description: string;
+  emoji: string;
+  imageUrl: string;
+  slots?: number;
+  isActive?: boolean;
+}
+
 export interface GiveawaySpinInput {
   sessionId: string;
   giveawayItemId: string;
-  productId: string;
+  participantId: string | null;
+  productId: string | null;
+  prizeTitle: string;
+  itemType: GiveawayItem["itemType"];
   winnerNickname: string;
   spinDurationMs: number;
   note?: string;
@@ -135,7 +167,9 @@ export function createFallbackBootstrap(): BootstrapPayload {
     homepageSections: fallbackHomepageSections.map((item) => ({ ...item, linkedProductIds: [...item.linkedProductIds] })),
     giveawaySessions: fallbackGiveawaySessions.map((item) => ({ ...item })),
     giveawayItems: fallbackGiveawayItems.map((item) => ({ ...item })),
-    giveawayResults: fallbackGiveawayResults.map((item) => ({ ...item }))
+    giveawayParticipants: fallbackGiveawayParticipants.map((item) => ({ ...item })),
+    giveawayResults: fallbackGiveawayResults.map((item) => ({ ...item })),
+    giveawayEvents: fallbackGiveawayEvents.map((item) => ({ ...item }))
   };
 }
 
