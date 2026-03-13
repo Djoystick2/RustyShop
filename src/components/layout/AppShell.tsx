@@ -1,25 +1,12 @@
 import { Outlet, useLocation } from "react-router-dom";
-import {
-  getStorageBucketName,
-  getTelegramVerifyConfig,
-  isDefaultStorageBucket
-} from "../../config/runtime";
 import { useAppContext } from "../../context/AppContext";
 import { DataStateBoundary } from "../common/DataStateBoundary";
 import { BottomNav } from "./BottomNav";
 
 export function AppShell() {
   const location = useLocation();
-  const {
-    actionError,
-    authVerificationMessage,
-    authVerificationStatus,
-    clearActionError,
-    repositoryKind
-  } = useAppContext();
+  const { actionError, clearActionError, repositoryKind } = useAppContext();
 
-  const verifyConfig = getTelegramVerifyConfig();
-  const isCustomBucket = !isDefaultStorageBucket();
   const isProfileArea = location.pathname.startsWith("/profile");
   const isSoftActionError = Boolean(actionError?.includes("Mini App"));
 
@@ -33,44 +20,10 @@ export function AppShell() {
           </section>
         ) : null}
 
-        {repositoryKind === "local" ? (
+        {repositoryKind === "local" && !isProfileArea ? (
           <section className="mode-banner mode-banner_compact">
             <strong>Локальный режим:</strong>
             <span>данные сохраняются только на этом устройстве.</span>
-          </section>
-        ) : null}
-
-        {repositoryKind === "supabase" && isProfileArea && verifyConfig.source === "fallback" ? (
-          <section className="mode-banner mode-banner_compact">
-            <strong>Verify endpoint:</strong>
-            <span>используем same-origin fallback `{verifyConfig.endpoint}`.</span>
-          </section>
-        ) : null}
-
-        {repositoryKind === "supabase" && isProfileArea && authVerificationStatus === "verifying" ? (
-          <section className="mode-banner mode-banner_compact">
-            <strong>Проверка Telegram:</strong>
-            <span>идет верификация initData.</span>
-          </section>
-        ) : null}
-
-        {repositoryKind === "supabase" && isProfileArea && authVerificationStatus === "unavailable" ? (
-          <section className="mode-banner mode-banner_compact">
-            <strong>Проверка Telegram:</strong>
-            <span>{authVerificationMessage || "initData недоступен в текущем окружении."}</span>
-          </section>
-        ) : null}
-
-        {repositoryKind === "supabase" && isProfileArea && authVerificationStatus === "failed" ? (
-          <section className="error-banner">
-            <span>{authVerificationMessage || "Проверка Telegram auth завершилась ошибкой."}</span>
-          </section>
-        ) : null}
-
-        {repositoryKind === "supabase" && isProfileArea && isCustomBucket ? (
-          <section className="mode-banner mode-banner_compact">
-            <strong>Storage:</strong>
-            <span>используется bucket `{getStorageBucketName()}`. Проверьте storage policies.</span>
           </section>
         ) : null}
 
