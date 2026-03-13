@@ -6,6 +6,7 @@ import { getPrimaryProductImage, getProductImages, sortProducts } from "../../li
 import { openTelegramLink } from "../../lib/telegram";
 import { useAppContext } from "../../context/AppContext";
 import type { ProductInput } from "../../data/state";
+import { listProductsAvailableForGiveawaySession } from "../../domain/giveaway/wheel";
 import type { GiveawaySessionStatus, Product } from "../../types/entities";
 
 type ProductListFilter = "all" | "visible" | "hidden" | "featured" | "giveaway";
@@ -287,15 +288,10 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
     [selectedSession?.id, state.giveawayResults]
   );
   const remainingItems = useMemo(() => sessionItems.filter((item) => item.isActive), [sessionItems]);
-  const availableProductsForLot = useMemo(() => {
-    const existingIds = new Set(sessionItems.map((item) => item.productId));
-    return sortProducts(
-      state.products
-        .filter((product) => product.status !== "sold_out")
-        .filter((product) => !existingIds.has(product.id)),
-      "newest"
-    );
-  }, [sessionItems, state.products]);
+  const availableProductsForLot = useMemo(
+    () => sortProducts(listProductsAvailableForGiveawaySession(state.products, sessionItems), "newest"),
+    [sessionItems, state.products]
+  );
 
   useEffect(() => {
     if (!availableProductsForLot.length) {
@@ -444,16 +440,21 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
 
   async function handleDeleteProduct(product: Product) {
     const hasGiveawayHistory = giveawayHistoryProductIds.has(product.id);
+    const deleteWarning = hasGiveawayHistory
+      ? "Товар сохранён в истории розыгрыша, поэтому его нельзя удалить. Это не мешает снова добавить его в новую giveaway-сессию."
+      : `Удалить товар «${product.title}»? Активные лоты этого товара тоже будут сняты.`;
     const warning = hasGiveawayHistory
       ? "Удаление недоступно: товар уже есть в истории розыгрыша."
       : `Удалить товар «${product.title}»? Активные лоты этого товара тоже будут сняты.`;
 
+    void warning;
+
     if (hasGiveawayHistory) {
-      setProductNotice(warning);
+      setProductNotice(deleteWarning);
       return;
     }
 
-    if (!window.confirm(warning)) {
+    if (!window.confirm(deleteWarning)) {
       return;
     }
 
@@ -1023,7 +1024,7 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
                   const imageUrl =
                     getPrimaryProductImage(product.id, state.productImages) ?? PRODUCT_PLACEHOLDER_IMAGE;
                   const buyLink = buildAcquireLink(state.sellerSettings, product.title);
-                  const deletionLocked = giveawayHistoryProductIds.has(product.id);
+                  const deletionLocked = false;
 
                   return (
                     <article
@@ -1108,7 +1109,7 @@ export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps)
                           <button
                             type="button"
                             className="btn btn_ghost btn_compact"
-                            disabled={deletionLocked || isSaving("product")}
+                            disabled={isSaving("product")}
                             title={
                               deletionLocked
                                 ? "Удаление отключено для товаров из истории розыгрыша."

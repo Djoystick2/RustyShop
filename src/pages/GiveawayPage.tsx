@@ -4,6 +4,7 @@ import { GiveawayWheel } from "../components/giveaway/GiveawayWheel";
 import {
   buildGiveawayWheelSegments,
   computeSpinTargetRotation,
+  listProductsAvailableForGiveawaySession,
   pickWinningSegmentIndex
 } from "../domain/giveaway/wheel";
 import { useAppContext } from "../context/AppContext";
@@ -121,12 +122,10 @@ export function GiveawayPage() {
   );
   const lastResult = sessionResults.find((result) => result.id === lastResultId) ?? null;
 
-  const availableProductsForLot = useMemo(() => {
-    const existing = new Set(sessionItems.map((item) => item.productId));
-    return state.products
-      .filter((product) => product.status !== "sold_out")
-      .filter((product) => !existing.has(product.id));
-  }, [sessionItems, state.products]);
+  const availableProductsForLot = useMemo(
+    () => listProductsAvailableForGiveawaySession(state.products, sessionItems),
+    [sessionItems, state.products]
+  );
 
   useEffect(() => {
     if (!selectedSession) {
