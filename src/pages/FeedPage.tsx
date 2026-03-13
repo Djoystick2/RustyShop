@@ -1,15 +1,9 @@
 import { useMemo, useState } from "react";
-import { ProductCard } from "../components/products/ProductCard";
 import { ProductQuickViewModal } from "../components/products/ProductQuickViewModal";
 import { HomepageSectionRenderer } from "../components/storefront/HomepageSectionRenderer";
+import { StorefrontProductList } from "../components/storefront/StorefrontProductList";
 import { useAppContext } from "../context/AppContext";
-import {
-  canViewProduct,
-  filterProducts,
-  getPrimaryProductImage,
-  sortProducts,
-  type ProductSortMode
-} from "../lib/product-utils";
+import { canViewProduct, filterProducts, sortProducts } from "../lib/product-utils";
 import type { HomepageSection, Product } from "../types/entities";
 
 function pickSectionProducts(
@@ -60,8 +54,6 @@ export function FeedPage() {
     toggleProductVisibility
   } = useAppContext();
 
-  const [listFilter, setListFilter] = useState<"all" | "available" | "giveaway">("all");
-  const [listSort, setListSort] = useState<ProductSortMode>("newest");
   const [quickView, setQuickView] = useState<{ product: Product; imageUrl?: string } | null>(null);
 
   const favoritesSet = useMemo(
@@ -120,15 +112,6 @@ export function FeedPage() {
     [storefrontProducts]
   );
 
-  const listingProducts = useMemo(() => {
-    const filtered = filterProducts(storefrontProducts, {
-      query: state.searchQuery,
-      onlyAvailable: listFilter === "available",
-      onlyGiveaway: listFilter === "giveaway"
-    });
-    return sortProducts(filtered, listSort);
-  }, [listFilter, listSort, state.searchQuery, storefrontProducts]);
-
   const homepageSections = useMemo(
     () =>
       [...state.homepageSections]
@@ -159,27 +142,19 @@ export function FeedPage() {
         {state.searchQuery.trim() ? (
           <section className="stack">
             <h2 className="section-title">Результаты поиска</h2>
-            {searchProducts.length === 0 ? (
-              <div className="card empty-state">
-                <h3>Ничего не найдено</h3>
-                <p>Попробуйте другое слово или очистите поиск.</p>
-              </div>
-            ) : (
-              searchProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  imageUrl={getPrimaryProductImage(product.id, state.productImages)}
-                  isFavorite={favoritesSet.has(product.id)}
-                  sellerSettings={state.sellerSettings}
-                  isAdmin={isAdmin}
-                  onToggleFavorite={toggleFavorite}
-                  onToggleVisibility={toggleProductVisibility}
-                  onToggleAvailability={toggleProductAvailability}
-                  onToggleFeatured={toggleProductFeatured}
-                />
-              ))
-            )}
+            <StorefrontProductList
+              products={searchProducts}
+              productImages={state.productImages}
+              sellerSettings={state.sellerSettings}
+              isAdmin={isAdmin}
+              favoritesSet={favoritesSet}
+              onToggleFavorite={toggleFavorite}
+              onToggleVisibility={toggleProductVisibility}
+              onToggleAvailability={toggleProductAvailability}
+              onToggleFeatured={toggleProductFeatured}
+              emptyTitle="Ничего не найдено"
+              emptyMessage="Попробуйте другое слово или очистите поиск."
+            />
           </section>
         ) : (
           homepageSections.map((section) => (
@@ -202,66 +177,6 @@ export function FeedPage() {
             />
           ))
         )}
-
-        <section className="stack">
-          <div className="row-between row-wrap">
-            <h2 className="section-title">Вся витрина</h2>
-            <div className="toolbar">
-              <button
-                type="button"
-                className={`btn btn_secondary${listFilter === "all" ? " btn_active" : ""}`}
-                onClick={() => setListFilter("all")}
-              >
-                Все
-              </button>
-              <button
-                type="button"
-                className={`btn btn_secondary${listFilter === "available" ? " btn_active" : ""}`}
-                onClick={() => setListFilter("available")}
-              >
-                В наличии
-              </button>
-              <button
-                type="button"
-                className={`btn btn_secondary${listFilter === "giveaway" ? " btn_active" : ""}`}
-                onClick={() => setListFilter("giveaway")}
-              >
-                Розыгрыш
-              </button>
-              <select
-                className="compact-select"
-                value={listSort}
-                onChange={(event) => setListSort(event.target.value as ProductSortMode)}
-              >
-                <option value="newest">Сначала новые</option>
-                <option value="title">По названию</option>
-                <option value="price_asc">Цена по возрастанию</option>
-                <option value="price_desc">Цена по убыванию</option>
-              </select>
-            </div>
-          </div>
-          {listingProducts.length === 0 ? (
-            <div className="card empty-state">
-              <h3>Пока нечего показать</h3>
-              <p>Измените фильтры или добавьте товары в админке.</p>
-            </div>
-          ) : (
-            listingProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                imageUrl={getPrimaryProductImage(product.id, state.productImages)}
-                isFavorite={favoritesSet.has(product.id)}
-                sellerSettings={state.sellerSettings}
-                isAdmin={isAdmin}
-                onToggleFavorite={toggleFavorite}
-                onToggleVisibility={toggleProductVisibility}
-                onToggleAvailability={toggleProductAvailability}
-                onToggleFeatured={toggleProductFeatured}
-              />
-            ))
-          )}
-        </section>
       </div>
 
       {quickView ? (

@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ProductCard } from "../components/products/ProductCard";
+import { StorefrontProductList } from "../components/storefront/StorefrontProductList";
 import { useAppContext } from "../context/AppContext";
 import {
   canViewProduct,
   filterProducts,
-  getPrimaryProductImage,
   sortProducts,
   type ProductSortMode
 } from "../lib/product-utils";
@@ -131,29 +130,20 @@ export function CategoryPage() {
         {isSaving("product") ? <small>Сохраняем товарные изменения...</small> : null}
       </section>
 
-      {products.length === 0 ? (
-        <section className="card empty-state">
-          <h3>В этой категории нет товаров по текущим фильтрам</h3>
-          <p>Сбросьте фильтры или вернитесь позже.</p>
-        </section>
-      ) : (
-        <section className="stack category-page__listing">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              imageUrl={getPrimaryProductImage(product.id, state.productImages)}
-              isFavorite={favoritesSet.has(product.id)}
-              sellerSettings={state.sellerSettings}
-              isAdmin={isAdmin}
-              onToggleFavorite={toggleFavorite}
-              onToggleVisibility={toggleProductVisibility}
-              onToggleAvailability={toggleProductAvailability}
-              onToggleFeatured={toggleProductFeatured}
-            />
-          ))}
-        </section>
-      )}
+      <StorefrontProductList
+        products={products}
+        productImages={state.productImages}
+        sellerSettings={state.sellerSettings}
+        isAdmin={isAdmin}
+        favoritesSet={favoritesSet}
+        onToggleFavorite={toggleFavorite}
+        onToggleVisibility={toggleProductVisibility}
+        onToggleAvailability={toggleProductAvailability}
+        onToggleFeatured={toggleProductFeatured}
+        emptyTitle="В этой категории нет товаров по текущим фильтрам"
+        emptyMessage="Сбросьте фильтры или вернитесь позже."
+        className="storefront-product-list category-page__listing"
+      />
     </div>
   );
 }
