@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ProductCard } from "../components/products/ProductCard";
+import { ProductQuickViewModal } from "../components/products/ProductQuickViewModal";
 import { HomepageSectionRenderer } from "../components/storefront/HomepageSectionRenderer";
 import { useAppContext } from "../context/AppContext";
 import {
@@ -61,6 +62,7 @@ export function FeedPage() {
 
   const [listFilter, setListFilter] = useState<"all" | "available" | "giveaway">("all");
   const [listSort, setListSort] = useState<ProductSortMode>("newest");
+  const [quickView, setQuickView] = useState<{ product: Product; imageUrl?: string } | null>(null);
 
   const favoritesSet = useMemo(
     () =>
@@ -135,30 +137,116 @@ export function FeedPage() {
     [state.homepageSections]
   );
 
-  return (
-    <div className="page stack-lg">
-      <section className="card stack">
-        <label className="field">
-          <span>Поиск по товарам</span>
-          <input
-            value={state.searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Например: свеча, игрушка, серьги"
-          />
-        </label>
-        {isSaving("product") ? <small>Сохраняем изменения по товарам...</small> : null}
-      </section>
+  function openQuickView(product: Product, imageUrl?: string) {
+    setQuickView({ product, imageUrl });
+  }
 
-      {state.searchQuery.trim() ? (
+  return (
+    <>
+      <div className="page stack-lg">
+        <section className="card stack">
+          <label className="field">
+            <span>Поиск по товарам</span>
+            <input
+              value={state.searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Например: свеча, игрушка, серьги"
+            />
+          </label>
+          {isSaving("product") ? <small>Сохраняем изменения по товарам...</small> : null}
+        </section>
+
+        {state.searchQuery.trim() ? (
+          <section className="stack">
+            <h2 className="section-title">Результаты поиска</h2>
+            {searchProducts.length === 0 ? (
+              <div className="card empty-state">
+                <h3>Ничего не найдено</h3>
+                <p>Попробуйте другое слово или очистите поиск.</p>
+              </div>
+            ) : (
+              searchProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  imageUrl={getPrimaryProductImage(product.id, state.productImages)}
+                  isFavorite={favoritesSet.has(product.id)}
+                  sellerSettings={state.sellerSettings}
+                  isAdmin={isAdmin}
+                  onToggleFavorite={toggleFavorite}
+                  onToggleVisibility={toggleProductVisibility}
+                  onToggleAvailability={toggleProductAvailability}
+                  onToggleFeatured={toggleProductFeatured}
+                />
+              ))
+            )}
+          </section>
+        ) : (
+          homepageSections.map((section) => (
+            <HomepageSectionRenderer
+              key={section.id}
+              section={section}
+              products={pickSectionProducts(
+                section,
+                storefrontProducts,
+                newProducts,
+                recommendedProducts,
+                giveawayProducts
+              )}
+              categories={state.categories}
+              productImages={state.productImages}
+              storeSettings={state.storeSettings}
+              sellerSettings={state.sellerSettings}
+              isAdmin={isAdmin}
+              onOpenProduct={openQuickView}
+            />
+          ))
+        )}
+
         <section className="stack">
-          <h2 className="section-title">Результаты поиска</h2>
-          {searchProducts.length === 0 ? (
+          <div className="row-between row-wrap">
+            <h2 className="section-title">Вся витрина</h2>
+            <div className="toolbar">
+              <button
+                type="button"
+                className={`btn btn_secondary${listFilter === "all" ? " btn_active" : ""}`}
+                onClick={() => setListFilter("all")}
+              >
+                Все
+              </button>
+              <button
+                type="button"
+                className={`btn btn_secondary${listFilter === "available" ? " btn_active" : ""}`}
+                onClick={() => setListFilter("available")}
+              >
+                В наличии
+              </button>
+              <button
+                type="button"
+                className={`btn btn_secondary${listFilter === "giveaway" ? " btn_active" : ""}`}
+                onClick={() => setListFilter("giveaway")}
+              >
+                Розыгрыш
+              </button>
+              <select
+                className="compact-select"
+                value={listSort}
+                onChange={(event) => setListSort(event.target.value as ProductSortMode)}
+              >
+                <option value="newest">Сначала новые</option>
+                <option value="title">По названию</option>
+                <option value="price_asc">Цена по возрастанию</option>
+                <option value="price_desc">Цена по убыванию</option>
+              </select>
+            </div>
+          </div>
+          {listingProducts.length === 0 ? (
             <div className="card empty-state">
-              <h3>Ничего не найдено</h3>
-              <p>Попробуйте другое слово или очистите поиск.</p>
+              <h3>Пока нечего показать</h3>
+              <p>Измените фильтры или добавьте товары в админке.</p>
             </div>
           ) : (
-            searchProducts.map((product) => (
+            listingProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -174,86 +262,15 @@ export function FeedPage() {
             ))
           )}
         </section>
-      ) : (
-        homepageSections.map((section) => (
-          <HomepageSectionRenderer
-            key={section.id}
-            section={section}
-            products={pickSectionProducts(
-              section,
-              storefrontProducts,
-              newProducts,
-              recommendedProducts,
-              giveawayProducts
-            )}
-            categories={state.categories}
-            productImages={state.productImages}
-            storeSettings={state.storeSettings}
-            sellerSettings={state.sellerSettings}
-            isAdmin={isAdmin}
-          />
-        ))
-      )}
+      </div>
 
-      <section className="stack">
-        <div className="row-between row-wrap">
-          <h2 className="section-title">Вся витрина</h2>
-          <div className="toolbar">
-            <button
-              type="button"
-              className={`btn btn_secondary${listFilter === "all" ? " btn_active" : ""}`}
-              onClick={() => setListFilter("all")}
-            >
-              Все
-            </button>
-            <button
-              type="button"
-              className={`btn btn_secondary${listFilter === "available" ? " btn_active" : ""}`}
-              onClick={() => setListFilter("available")}
-            >
-              В наличии
-            </button>
-            <button
-              type="button"
-              className={`btn btn_secondary${listFilter === "giveaway" ? " btn_active" : ""}`}
-              onClick={() => setListFilter("giveaway")}
-            >
-              Розыгрыш
-            </button>
-            <select
-              className="compact-select"
-              value={listSort}
-              onChange={(event) => setListSort(event.target.value as ProductSortMode)}
-            >
-              <option value="newest">Сначала новые</option>
-              <option value="title">По названию</option>
-              <option value="price_asc">Цена по возрастанию</option>
-              <option value="price_desc">Цена по убыванию</option>
-            </select>
-          </div>
-        </div>
-        {listingProducts.length === 0 ? (
-          <div className="card empty-state">
-            <h3>Пока нечего показать</h3>
-            <p>Измените фильтры или добавьте товары в админке.</p>
-          </div>
-        ) : (
-          listingProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              imageUrl={getPrimaryProductImage(product.id, state.productImages)}
-              isFavorite={favoritesSet.has(product.id)}
-              sellerSettings={state.sellerSettings}
-              isAdmin={isAdmin}
-              onToggleFavorite={toggleFavorite}
-              onToggleVisibility={toggleProductVisibility}
-              onToggleAvailability={toggleProductAvailability}
-              onToggleFeatured={toggleProductFeatured}
-            />
-          ))
-        )}
-      </section>
-    </div>
+      {quickView ? (
+        <ProductQuickViewModal
+          product={quickView.product}
+          imageUrl={quickView.imageUrl}
+          onClose={() => setQuickView(null)}
+        />
+      ) : null}
+    </>
   );
 }

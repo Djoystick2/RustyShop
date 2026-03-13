@@ -18,6 +18,7 @@ interface HomepageSectionRendererProps {
   storeSettings: StoreSettings;
   sellerSettings: SellerSettings;
   isAdmin: boolean;
+  onOpenProduct: (product: Product, imageUrl?: string) => void;
 }
 
 function renderProductShelf(
@@ -25,7 +26,8 @@ function renderProductShelf(
   sellerSettings: SellerSettings,
   productImages: ProductImage[],
   isAdmin: boolean,
-  emptyText: string
+  emptyText: string,
+  onOpenProduct: (product: Product, imageUrl?: string) => void
 ) {
   if (products.length === 0) {
     return (
@@ -37,15 +39,20 @@ function renderProductShelf(
 
   return (
     <div className="shelf-row">
-      {products.map((product) => (
-        <ProductMiniCard
-          key={product.id}
-          product={product}
-          sellerSettings={sellerSettings}
-          imageUrl={getPrimaryProductImage(product.id, productImages)}
-          isAdmin={isAdmin}
-        />
-      ))}
+      {products.map((product) => {
+        const primaryImage = getPrimaryProductImage(product.id, productImages);
+
+        return (
+          <ProductMiniCard
+            key={product.id}
+            product={product}
+            sellerSettings={sellerSettings}
+            imageUrl={primaryImage}
+            isAdmin={isAdmin}
+            onOpen={onOpenProduct}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -57,7 +64,8 @@ export function HomepageSectionRenderer({
   productImages,
   storeSettings,
   sellerSettings,
-  isAdmin
+  isAdmin,
+  onOpenProduct
 }: HomepageSectionRendererProps) {
   if (!section.isEnabled) {
     return null;
@@ -125,7 +133,8 @@ export function HomepageSectionRenderer({
           sellerSettings,
           productImages,
           isAdmin,
-          "В этой подборке пока нет товаров."
+          "В этой подборке пока нет товаров.",
+          onOpenProduct
         )}
       </section>
     );
@@ -141,7 +150,8 @@ export function HomepageSectionRenderer({
           sellerSettings,
           productImages,
           isAdmin,
-          "Сезонная подборка пока пуста."
+          "Сезонная подборка пока пуста.",
+          onOpenProduct
         )}
       </section>
     );
@@ -152,7 +162,7 @@ export function HomepageSectionRenderer({
       <section className="stack">
         <h2 className="section-title">{section.title || "Новинки"}</h2>
         {section.subtitle ? <p className="section-subtitle">{section.subtitle}</p> : null}
-        {renderProductShelf(products, sellerSettings, productImages, isAdmin, "Новинок пока нет.")}
+        {renderProductShelf(products, sellerSettings, productImages, isAdmin, "Новинок пока нет.", onOpenProduct)}
       </section>
     );
   }
@@ -167,7 +177,8 @@ export function HomepageSectionRenderer({
           sellerSettings,
           productImages,
           isAdmin,
-          "Рекомендации скоро появятся."
+          "Рекомендации скоро появятся.",
+          onOpenProduct
         )}
       </section>
     );
@@ -183,7 +194,8 @@ export function HomepageSectionRenderer({
           sellerSettings,
           productImages,
           isAdmin,
-          "Сейчас нет товаров в розыгрыше."
+          "Сейчас нет товаров в розыгрыше.",
+          onOpenProduct
         )}
       </section>
     );

@@ -9,13 +9,15 @@ interface ProductMiniCardProps {
   imageUrl?: string;
   sellerSettings: SellerSettings;
   isAdmin?: boolean;
+  onOpen?: (product: Product, imageUrl?: string) => void;
 }
 
 export function ProductMiniCard({
   product,
   imageUrl,
   sellerSettings,
-  isAdmin = false
+  isAdmin = false,
+  onOpen
 }: ProductMiniCardProps) {
   const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
   const buyLink = buildAcquireLink(sellerSettings, product.title);
@@ -23,6 +25,35 @@ export function ProductMiniCard({
   const hasBadges = product.status === "new" || product.isFeatured || product.isGiveawayEligible;
   const availabilityLabel =
     product.status === "sold_out" ? "Продано" : product.isAvailable ? "В наличии" : "Под заказ";
+
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        className="mini-product-card mini-product-card_button"
+        onClick={() => onOpen(product, imageUrl)}
+        aria-label={`Открыть ${product.title}`}
+      >
+        <span className="mini-product-card__media">
+          <img src={mediaSrc} alt={product.title} loading="lazy" />
+        </span>
+        <span className="mini-product-card__content">
+          <span className="mini-product-card__title">{product.title}</span>
+          <span className="mini-product-card__meta">
+            <span className="mini-product-card__price">{product.priceText}</span>
+            <small className="mini-product-card__status">{availabilityLabel}</small>
+          </span>
+          {hasBadges ? (
+            <span className="badge-row mini-product-card__badges">
+              {product.status === "new" ? <span className="badge badge_new">Новинка</span> : null}
+              {product.isFeatured ? <span className="badge badge_popular">Рекомендуем</span> : null}
+              {product.isGiveawayEligible ? <span className="badge badge_giveaway">Розыгрыш</span> : null}
+            </span>
+          ) : null}
+        </span>
+      </button>
+    );
+  }
 
   return (
     <article className="mini-product-card">
