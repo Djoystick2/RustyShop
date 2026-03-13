@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { HeroBanner } from "./HeroBanner";
 import { ProductMiniCard } from "../products/ProductMiniCard";
 import { getPrimaryProductImage } from "../../lib/product-utils";
 import type {
@@ -74,6 +75,7 @@ export function HomepageSectionRenderer({
   if (section.type === "hero") {
     return (
       <section className="card hero hero_showcase">
+        <HeroBanner />
         <p className="hero__eyebrow">{storeSettings.heroBadge || "Ручная работа"}</p>
         <h1>
           {storeSettings.mascotEmoji ? `${storeSettings.mascotEmoji} ` : ""}

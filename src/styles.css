@@ -90,6 +90,16 @@
     --nav-pill-active: rgba(88, 60, 42, 0.92);
     --nav-pill-pressed: rgba(72, 50, 36, 0.95);
   }
+
+  .hero-banner {
+    background:
+      linear-gradient(180deg, rgba(62, 44, 34, 0.6) 0%, rgba(42, 31, 26, 0.42) 100%),
+      var(--bg-soft);
+  }
+
+  .hero-banner::after {
+    box-shadow: inset 0 -18px 30px rgba(0, 0, 0, 0.18);
+  }
 }
 
 *,
@@ -211,6 +221,40 @@ small {
 
 .hero {
   background: var(--hero-bg);
+}
+
+.hero_showcase {
+  gap: 10px;
+}
+
+.hero-banner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1536 / 492;
+  overflow: hidden;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 237, 0.74) 0%, rgba(255, 240, 218, 0.56) 100%),
+    var(--bg-soft);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    var(--shadow-soft);
+}
+
+.hero-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 -16px 28px rgba(70, 41, 18, 0.08);
+}
+
+.hero-banner__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .hero__eyebrow {
@@ -1306,6 +1350,10 @@ small {
 
   .bottom-nav__label {
     font-size: 10.5px;
+  }
+
+  .hero-banner {
+    border-radius: 18px;
   }
 
   .mini-product-card {
