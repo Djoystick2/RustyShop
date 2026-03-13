@@ -87,139 +87,166 @@ export function ProductPage() {
   ).slice(0, 4);
 
   return (
-    <div className="page stack-lg">
-      <section className="card stack product-page__hero-card">
-        <Link to="/" className="text-link">
-          ← Назад
+    <div className="page stack-lg product-page">
+      <section className="card stack product-page__overview">
+        <Link to={category ? `/catalog/${category.id}` : "/catalog"} className="text-link product-page__back-link">
+          ← Назад в каталог
         </Link>
-        <div className="product-page__media">
-          <img src={activeImage} alt={product.title} />
-        </div>
-        {images.length > 1 ? (
-          <div className="gallery-row">
-            {images.map((image, index) => (
-              <button
-                key={image.id}
-                type="button"
-                className={`gallery-thumb${activeImageIndex === index ? " gallery-thumb_active" : ""}`}
-                onClick={() => setActiveImageIndex(index)}
-              >
-                <img src={image.url} alt={`${product.title} ${index + 1}`} />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <small>Дополнительные фото появятся после обновления карточки.</small>
-        )}
-      </section>
 
-      <section className="card stack product-page__details">
-        <div className="product-title-row">
-          <h1>{product.title}</h1>
-          {!isAdmin ? (
-            <button
-              type="button"
-              className={`icon-button${isFavorite ? " icon-button_active" : ""}`}
-              onClick={() => void toggleFavorite(product.id)}
-              aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
-            >
-              {isFavorite ? "♥" : "♡"}
-            </button>
-          ) : null}
-        </div>
-        <p className="product-price">{product.priceText}</p>
-        <div className="badge-row">
-          {getStatusBadges(product).map((label) => (
-            <span key={label} className="badge badge_soft">
-              {label}
-            </span>
-          ))}
-          <span className="badge badge_soft">{category?.name ?? "Без категории"}</span>
-          {!product.isVisible ? <span className="badge badge_soft">Скрытый товар</span> : null}
-        </div>
-        <p>{product.description}</p>
-
-        <div className="product-specs-grid">
-          <div className="card product-spec-card">
-            <h3>Материалы</h3>
-            <div className="chips-row">
-              {product.materials.length === 0
-                ? "Скоро добавим детали."
-                : product.materials.map((material) => (
-                    <span key={material} className="chip">
-                      {material}
-                    </span>
-                  ))}
+        <div className="product-page__hero-layout">
+          <div className="stack-sm product-page__media-column">
+            <div className="product-page__media">
+              <img src={activeImage} alt={product.title} />
             </div>
+            {images.length > 1 ? (
+              <div className="gallery-row">
+                {images.map((image, index) => (
+                  <button
+                    key={image.id}
+                    type="button"
+                    className={`gallery-thumb${activeImageIndex === index ? " gallery-thumb_active" : ""}`}
+                    onClick={() => setActiveImageIndex(index)}
+                  >
+                    <img src={image.url} alt={`${product.title} ${index + 1}`} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <small className="product-page__gallery-note">
+                Дополнительные фото появятся после обновления карточки.
+              </small>
+            )}
           </div>
-          <div className="card product-spec-card">
-            <h3>Характеристики</h3>
-            <ul className="plain-list">
-              <li>Ручная работа мастера</li>
-              <li>Упаковка для подарка по запросу</li>
-              <li>Согласование деталей в личных сообщениях</li>
-            </ul>
-          </div>
-        </div>
 
-        {!isAdmin ? (
-          <>
-            <div className="toolbar product-page__cta">
-              {buyLink ? (
+          <div className="stack product-page__summary">
+            <div className="product-title-row">
+              <div className="stack-sm product-page__title-block">
+                <p className="hero__eyebrow">{category?.name ?? "Товар мастера"}</p>
+                <h1>{product.title}</h1>
+              </div>
+              {!isAdmin ? (
                 <button
                   type="button"
-                  className="btn btn_primary"
-                  onClick={() => openTelegramLink(buyLink)}
-                  disabled={product.status === "sold_out"}
+                  className={`icon-button${isFavorite ? " icon-button_active" : ""}`}
+                  onClick={() => void toggleFavorite(product.id)}
+                  aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
                 >
-                  {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
+                  {isFavorite ? "♥" : "♡"}
                 </button>
-              ) : (
-                <Link to="/about" className="btn btn_secondary">
-                  Контакты продавца
-                </Link>
-              )}
-              <button
-                type="button"
-                className="btn btn_secondary"
-                onClick={() => void toggleFavorite(product.id)}
-              >
-                {isFavorite ? "Убрать из избранного" : "В избранное"}
-              </button>
+              ) : null}
             </div>
-            {hasContact ? (
-              <small>
-                Связь с мастером: @{state.sellerSettings.telegramUsername || "—"} · {state.sellerSettings.city}
-              </small>
+
+            <div className="product-page__price-row">
+              <p className="product-price">{product.priceText}</p>
+              {!product.isVisible ? <span className="badge badge_soft">Скрытый товар</span> : null}
+            </div>
+
+            <div className="badge-row product-page__badges">
+              {getStatusBadges(product).map((label) => (
+                <span key={label} className="badge badge_soft">
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            <p className="product-page__description">{product.description}</p>
+
+            {!isAdmin ? (
+              <div className="product-page__action-panel">
+                <div className="toolbar product-page__cta">
+                  {buyLink ? (
+                    <button
+                      type="button"
+                      className="btn btn_primary"
+                      onClick={() => openTelegramLink(buyLink)}
+                      disabled={product.status === "sold_out"}
+                    >
+                      {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
+                    </button>
+                  ) : (
+                    <Link to="/about" className="btn btn_secondary">
+                      Контакты продавца
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn_secondary"
+                    onClick={() => void toggleFavorite(product.id)}
+                  >
+                    {isFavorite ? "Убрать из избранного" : "В избранное"}
+                  </button>
+                </div>
+                {hasContact ? (
+                  <small className="product-page__contact">
+                    Связь с мастером: @{state.sellerSettings.telegramUsername || "—"} · {state.sellerSettings.city}
+                  </small>
+                ) : (
+                  <small className="product-page__contact">
+                    Контакты продавца пока не настроены. Их можно открыть в разделе «О мастере».
+                  </small>
+                )}
+              </div>
             ) : (
-              <small>Контакты продавца пока не настроены. Откройте раздел «О мастере».</small>
+              <div className="card stack-sm product-page__admin-panel">
+                <h3>Admin actions</h3>
+                <div className="toolbar">
+                  <button type="button" className="btn btn_ghost btn_compact" onClick={() => void toggleProductVisibility(product.id)}>
+                    {product.isVisible ? "Скрыть товар" : "Показать товар"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn_ghost btn_compact"
+                    onClick={() => void toggleProductAvailability(product.id)}
+                  >
+                    {product.isAvailable ? "Под заказ" : "В наличии"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn_ghost btn_compact"
+                    onClick={() => void toggleProductFeatured(product.id)}
+                  >
+                    {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
+                  </button>
+                </div>
+                <small>Управление лотами и статусом сессий выполняется на странице «Розыгрыш».</small>
+              </div>
             )}
-          </>
-        ) : (
-          <div className="card stack-sm">
-            <h3>Admin actions</h3>
-            <div className="toolbar">
-              <button type="button" className="btn btn_ghost" onClick={() => void toggleProductVisibility(product.id)}>
-                {product.isVisible ? "Скрыть товар" : "Показать товар"}
-              </button>
-              <button
-                type="button"
-                className="btn btn_ghost"
-                onClick={() => void toggleProductAvailability(product.id)}
-              >
-                {product.isAvailable ? "Под заказ" : "В наличии"}
-              </button>
-              <button type="button" className="btn btn_ghost" onClick={() => void toggleProductFeatured(product.id)}>
-                {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
-              </button>
-            </div>
-            <small>Управление лотами и статусом сессий выполняется только на странице «Розыгрыш».</small>
           </div>
-        )}
+        </div>
+      </section>
+
+      <section className="product-specs-grid">
+        <div className="card product-spec-card stack-sm">
+          <h3>Материалы</h3>
+          <div className="chips-row">
+            {product.materials.length === 0
+              ? "Скоро добавим детали."
+              : product.materials.map((material) => (
+                  <span key={material} className="chip">
+                    {material}
+                  </span>
+                ))}
+          </div>
+        </div>
+        <div className="card product-spec-card stack-sm">
+          <h3>Характеристики</h3>
+          <ul className="plain-list">
+            <li>Ручная работа мастера</li>
+            <li>Упаковка для подарка по запросу</li>
+            <li>Согласование деталей в личных сообщениях</li>
+          </ul>
+        </div>
       </section>
 
       <section className="stack">
-        <h2 className="section-title">Похожие товары</h2>
+        <div className="row-between row-wrap">
+          <h2 className="section-title">Похожие товары</h2>
+          {category ? (
+            <Link to={`/catalog/${category.id}`} className="text-link">
+              Больше в разделе {category.name}
+            </Link>
+          ) : null}
+        </div>
         {recommendations.length === 0 ? (
           <div className="card empty-state">
             <p>Похожие товары скоро появятся.</p>

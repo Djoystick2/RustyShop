@@ -52,6 +52,12 @@ export function ProductCard({
   const canBuyViaTelegram = Boolean(buyLink);
   const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
   const statusBadges = buildStatusBadges(product);
+  const availabilityNote =
+    product.status === "sold_out"
+      ? "Товар уже нашёл владельца, но можно запросить похожую работу."
+      : product.isAvailable
+        ? "Можно оформить прямо сейчас."
+        : "Изделие доступно под заказ.";
 
   return (
     <article className={`card product-card${product.isVisible ? "" : " product-card_hidden"}`}>
@@ -61,64 +67,71 @@ export function ProductCard({
 
       <div className="product-card__content">
         <div className="product-card__top">
-          <div className="badge-row">
+          <div className="badge-row product-card__badges">
             {statusBadges.map((badge) => (
               <span key={badge.key} className={`badge ${badge.className}`}>
                 {badge.label}
               </span>
             ))}
           </div>
-          <button
-            type="button"
-            className={`icon-button${isFavorite ? " icon-button_active" : ""}`}
-            onClick={() => void onToggleFavorite(product.id)}
-            aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
-          >
-            {isFavorite ? "♥" : "♡"}
-          </button>
+          {!isAdmin ? (
+            <button
+              type="button"
+              className={`icon-button${isFavorite ? " icon-button_active" : ""}`}
+              onClick={() => void onToggleFavorite(product.id)}
+              aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+            >
+              {isFavorite ? "♥" : "♡"}
+            </button>
+          ) : null}
         </div>
 
-        <Link to={`/product/${product.id}`} className="product-card__title">
-          {product.title}
-        </Link>
-        <p className="product-card__description">{product.description}</p>
-        <p className="product-card__price">{product.priceText}</p>
+        <div className="product-card__summary">
+          <Link to={`/product/${product.id}`} className="product-card__title">
+            {product.title}
+          </Link>
+          <p className="product-card__description">{product.description}</p>
+          <div className="product-card__meta">
+            <p className="product-card__price">{product.priceText}</p>
+            <small className="product-card__note">{availabilityNote}</small>
+          </div>
+        </div>
 
         <div className="product-card__actions">
           {!isAdmin ? (
             canBuyViaTelegram ? (
               <button
                 type="button"
-                className="btn btn_primary"
+                className="btn btn_primary btn_compact"
                 onClick={() => openTelegramLink(buyLink!)}
                 disabled={product.status === "sold_out"}
               >
                 {sellerSettings.purchaseButtonLabel || "Приобрести"}
               </button>
             ) : (
-              <Link to="/about" className="btn btn_secondary">
+              <Link to="/about" className="btn btn_secondary btn_compact">
                 Контакты продавца
               </Link>
             )
           ) : null}
-          <Link to={`/product/${product.id}`} className="btn btn_secondary">
+          <Link to={`/product/${product.id}`} className="btn btn_secondary btn_compact">
             {isAdmin ? "Открыть управление" : "Подробнее"}
           </Link>
         </div>
 
-        {!isAdmin && product.status === "sold_out" ? (
-          <small>Товар продан, но можно заказать похожий.</small>
-        ) : null}
-
         {isAdmin ? (
           <div className="product-card__admin-actions">
-            <button type="button" className="btn btn_ghost" onClick={() => void onToggleVisibility(product.id)}>
+            <button type="button" className="btn btn_ghost btn_compact" onClick={() => void onToggleVisibility(product.id)}>
               {product.isVisible ? "Скрыть" : "Показать"}
             </button>
-            <button type="button" className="btn btn_ghost" onClick={() => void onToggleAvailability(product.id)}>
+            <button
+              type="button"
+              className="btn btn_ghost btn_compact"
+              onClick={() => void onToggleAvailability(product.id)}
+            >
               {product.isAvailable ? "Под заказ" : "В наличии"}
             </button>
-            <button type="button" className="btn btn_ghost" onClick={() => void onToggleFeatured(product.id)}>
+            <button type="button" className="btn btn_ghost btn_compact" onClick={() => void onToggleFeatured(product.id)}>
               {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
             </button>
           </div>

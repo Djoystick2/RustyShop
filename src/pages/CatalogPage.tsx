@@ -39,10 +39,22 @@ export function CatalogPage() {
   );
 
   return (
-    <div className="page stack-lg">
-      <section className="card stack">
-        <h1>Каталог</h1>
-        <p>Выберите тематический блок и откройте подборку изделий мастера.</p>
+    <div className="page stack-lg catalog-page">
+      <section className="card stack catalog-page__hero">
+        <p className="hero__eyebrow">Навигация по витрине</p>
+        <div className="catalog-page__heading">
+          <div className="stack-sm">
+            <h1>Каталог</h1>
+            <p>Выберите тематический блок и откройте подборку изделий мастера в удобном ритме.</p>
+          </div>
+          <div className="catalog-page__summary">
+            <span className="badge badge_soft">{categories.length} категорий</span>
+            <span className="badge badge_soft">{filteredProducts.length} товаров</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="card stack catalog-page__filters">
         <div className="toolbar">
           <button
             type="button"
@@ -84,21 +96,22 @@ export function CatalogPage() {
           <p>Создайте категории в админке профиля.</p>
         </section>
       ) : (
-        <section className="category-grid">
+        <section className="category-grid catalog-page__grid">
           {categories.map((category) => {
-            const categoryProducts = filteredProducts.filter(
-              (product) => product.categoryId === category.id
-            );
+            const categoryProducts = filteredProducts.filter((product) => product.categoryId === category.id);
             const hasProducts = categoryProducts.length > 0;
 
             return (
               <Link key={category.id} to={`/catalog/${category.id}`} className="card category-card">
-                <p className="category-card__emoji">{category.emoji}</p>
+                <div className="category-card__head">
+                  <p className="category-card__emoji">{category.emoji}</p>
+                  <span className="badge badge_soft">{categoryProducts.length}</span>
+                </div>
                 <h2>{category.name}</h2>
                 <p>{category.description}</p>
                 {hasProducts ? (
                   <>
-                    <small>{categoryProducts.length} товаров</small>
+                    <small className="category-card__count">Товаров по текущим фильтрам: {categoryProducts.length}</small>
                     <p className="category-card__preview">
                       {categoryProducts
                         .slice(0, 2)
@@ -107,7 +120,7 @@ export function CatalogPage() {
                     </p>
                   </>
                 ) : (
-                  <small>Пока нет товаров по текущим фильтрам</small>
+                  <small className="category-card__count">Сейчас нет товаров по выбранным фильтрам</small>
                 )}
               </Link>
             );

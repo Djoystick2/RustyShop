@@ -42,9 +42,7 @@ export function CategoryPage() {
 
   const categoryProducts = useMemo(
     () =>
-      state.products.filter(
-        (item) => item.categoryId === categoryId && canViewProduct(item, isAdmin)
-      ),
+      state.products.filter((item) => item.categoryId === categoryId && canViewProduct(item, isAdmin)),
     [categoryId, isAdmin, state.products]
   );
 
@@ -75,18 +73,27 @@ export function CategoryPage() {
   }
 
   return (
-    <div className="page stack-lg">
-      <section className="card stack">
+    <div className="page stack-lg category-page">
+      <section className="card stack category-page__hero">
         <Link to="/catalog" className="text-link">
           ← Назад в каталог
         </Link>
-        <h1>
-          {category.emoji} {category.name}
-        </h1>
-        <p>{category.description}</p>
+        <div className="category-page__heading">
+          <div className="stack-sm">
+            <p className="hero__eyebrow">Подборка категории</p>
+            <h1>
+              {category.emoji} {category.name}
+            </h1>
+            <p>{category.description}</p>
+          </div>
+          <div className="category-page__summary">
+            <span className="badge badge_soft">{categoryProducts.length} всего</span>
+            <span className="badge badge_soft">{products.length} по фильтрам</span>
+          </div>
+        </div>
       </section>
 
-      <section className="card stack">
+      <section className="card stack category-page__filters">
         <label className="field">
           <span>Поиск внутри категории</span>
           <input
@@ -130,7 +137,7 @@ export function CategoryPage() {
           <p>Сбросьте фильтры или вернитесь позже.</p>
         </section>
       ) : (
-        <section className="stack">
+        <section className="stack category-page__listing">
           {products.map((product) => (
             <ProductCard
               key={product.id}
