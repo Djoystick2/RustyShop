@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
 
 export function AdminPanel() {
@@ -29,21 +29,32 @@ export function AdminPanel() {
 
   return (
     <section className="admin-panel stack">
-      <form className="stack" onSubmit={(event) => void submitBrand(event)}>
-        <label className="field">
-          <span>Название бренда</span>
-          <input
-            value={brandForm.storeName}
-            onChange={(event) => setBrandForm((prev) => ({ ...prev, storeName: event.target.value }))}
-          />
-        </label>
-        <label className="field">
-          <span>Слоган</span>
-          <input
-            value={brandForm.brandSlogan}
-            onChange={(event) => setBrandForm((prev) => ({ ...prev, brandSlogan: event.target.value }))}
-          />
-        </label>
+      <div className="stack-sm">
+        <p className="hero__eyebrow">Настройки storefront</p>
+        <h3>Бренд и первое впечатление</h3>
+        <p className="admin-panel__helper">
+          Эти поля управляют названием магазина, слоганом и верхней подписью hero-блока.
+        </p>
+      </div>
+
+      <form className="admin-panel__form stack" onSubmit={(event) => void submitBrand(event)}>
+        <div className="admin-panel__grid">
+          <label className="field">
+            <span>Название бренда</span>
+            <input
+              value={brandForm.storeName}
+              onChange={(event) => setBrandForm((prev) => ({ ...prev, storeName: event.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span>Слоган</span>
+            <input
+              value={brandForm.brandSlogan}
+              onChange={(event) => setBrandForm((prev) => ({ ...prev, brandSlogan: event.target.value }))}
+            />
+          </label>
+        </div>
+
         <label className="field">
           <span>Hero badge</span>
           <input
@@ -51,14 +62,17 @@ export function AdminPanel() {
             onChange={(event) => setBrandForm((prev) => ({ ...prev, heroBadge: event.target.value }))}
           />
         </label>
-        <button
-          className="btn btn_primary"
-          type="submit"
-          disabled={isSaving("settings_store")}
-          aria-busy={isSaving("settings_store")}
-        >
-          {isSaving("settings_store") ? "Сохраняем..." : "Сохранить"}
-        </button>
+
+        <div className="admin-panel__actions">
+          <button
+            className="btn btn_primary"
+            type="submit"
+            disabled={isSaving("settings_store")}
+            aria-busy={isSaving("settings_store")}
+          >
+            {isSaving("settings_store") ? "Сохраняем..." : "Сохранить"}
+          </button>
+        </div>
       </form>
     </section>
   );
