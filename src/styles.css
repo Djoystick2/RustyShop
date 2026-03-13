@@ -1371,6 +1371,55 @@ small {
   color: var(--accent-ink);
 }
 
+.admin-page__hero {
+  gap: 12px;
+}
+
+.admin-page__tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 18px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+}
+
+.admin-page__tab {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.admin-page__tab:hover {
+  color: var(--text-main);
+}
+
+.admin-page__tab:active {
+  transform: translateY(1px);
+}
+
+.admin-page__tab_active {
+  background: linear-gradient(180deg, var(--bg-soft-strong) 0%, var(--bg-soft) 100%);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.admin-page__diagnostics {
+  box-shadow: none;
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-alt) 100%);
+}
+
 .admin-panel__empty {
   display: flex;
   flex-direction: column;
@@ -1870,6 +1919,10 @@ small {
   .admin-panel__search {
     width: 100%;
     min-width: 0;
+  }
+
+  .admin-page__tabs {
+    width: 100%;
   }
 
   .product-card {

@@ -72,6 +72,7 @@ interface AppContextValue {
   state: AppState;
   currentProfile: Profile | null;
   isAdmin: boolean;
+  telegramUser: TelegramWebAppUser | null;
   telegramUserId: number | null;
   telegramBridgeInfo: TelegramBridgeInfo;
   repositoryKind: AppRepository["kind"];
@@ -996,6 +997,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       state,
       currentProfile,
       isAdmin,
+      telegramUser,
       telegramUserId,
       telegramBridgeInfo,
       repositoryKind: repository.kind,
@@ -1046,6 +1048,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       reload,
       repository.kind,
       repository.uploadProductImages,
+      telegramUser,
       telegramBridgeInfo,
       saveCategory,
       saveHomepageSection,
@@ -1057,6 +1060,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       setSearchQuery,
       state,
       switchProfile,
+      telegramUser,
       telegramUserId,
       toggleFavorite,
       toggleProductAvailability,

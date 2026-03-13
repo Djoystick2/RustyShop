@@ -1,20 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AdminPanel } from "../components/admin/AdminPanel";
 import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { useAppContext } from "../context/AppContext";
 import { buildSellerContactLink, hasSellerContact } from "../lib/acquire-link";
 import { getPrimaryProductImage } from "../lib/product-utils";
 import { openTelegramLink } from "../lib/telegram";
 
-const authStatusLabel: Record<string, string> = {
-  idle: "не запускалась",
-  verifying: "проверяем",
-  verified: "подтверждена",
-  failed: "ошибка проверки",
-  no_endpoint: "нет verify endpoint",
-  unavailable: "initData недоступен"
-};
+type ThemeMode = "system" | "light" | "dark";
 
 const themeModeLabel: Record<ThemeMode, string> = {
   system: "Как в устройстве",
@@ -22,21 +14,34 @@ const themeModeLabel: Record<ThemeMode, string> = {
   dark: "Тёмная"
 };
 
-type ThemeMode = "system" | "light" | "dark";
-
 const PROFILE_THEME_STORAGE_KEY = "rustyshop-theme-mode";
+
+function buildTelegramDisplayName(
+  firstName?: string,
+  lastName?: string,
+  username?: string,
+  fallback?: string
+) {
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+  if (fullName) {
+    return fullName;
+  }
+  if (username) {
+    return `@${username.replace(/^@/, "")}`;
+  }
+  return fallback || "Профиль";
+}
 
 export function ProfilePage() {
   const {
     adminGuardMessage,
-    authVerificationStatus,
     currentProfile,
     isAdmin,
     reload,
     state,
     switchProfile,
+    telegramUser,
     telegramUserId,
-    telegramBridgeInfo,
     repositoryKind,
     isSaving
   } = useAppContext();
@@ -70,7 +75,7 @@ export function ProfilePage() {
     "Здравствуйте! Хочу уточнить детали заказа."
   );
   const hasContact = hasSellerContact(state.sellerSettings);
-  const expectsAdminHub = currentProfile?.role === "admin";
+  const expectsAdminPanel = currentProfile?.role === "admin";
 
   const favoriteProducts = useMemo(
     () =>
@@ -82,10 +87,16 @@ export function ProfilePage() {
     [currentProfile?.id, state.favorites, state.products]
   );
 
-  const activeGiveaway = useMemo(
-    () => state.giveawaySessions.find((session) => session.status === "active") ?? null,
-    [state.giveawaySessions]
+  const profileDisplayName = buildTelegramDisplayName(
+    telegramUser?.first_name,
+    telegramUser?.last_name,
+    telegramUser?.username,
+    currentProfile?.displayName
   );
+  const profileAvatarUrl = telegramUser?.photo_url?.trim() || (!telegramUser ? currentProfile?.avatarUrl : "");
+  const profileSubtitle = telegramUser?.username
+    ? `@${telegramUser.username.replace(/^@/, "")}`
+    : currentProfile?.about || "Избранное, быстрые переходы и настройки интерфейса.";
 
   if (!currentProfile) {
     return (
@@ -102,40 +113,28 @@ export function ProfilePage() {
     <div className="page stack-lg profile-page">
       <section className="card stack profile-page__hero">
         <div className="profile-row">
-          {currentProfile.avatarUrl ? (
-            <img className="avatar profile-page__avatar" src={currentProfile.avatarUrl} alt={currentProfile.displayName} />
+          {profileAvatarUrl ? (
+            <img className="avatar profile-page__avatar" src={profileAvatarUrl} alt={profileDisplayName} />
           ) : (
-            <div className="avatar avatar_placeholder profile-page__avatar" />
+            <div className="avatar avatar_placeholder profile-page__avatar" aria-hidden />
           )}
           <div className="stack-sm profile-page__hero-copy">
-            <p className="hero__eyebrow">{isAdmin ? "Центр управления RustyShop" : "Личный кабинет"}</p>
-            <h1>{isAdmin ? "Профиль администратора" : currentProfile.displayName}</h1>
-            <p>
-              {isAdmin
-                ? "Компактный admin hub: тексты, товары, розыгрыш и живой storefront-сценарий без лишних переходов."
-                : currentProfile.about || "Здесь собраны избранное, связи с мастером и быстрые переходы по магазину."}
-            </p>
+            <p className="hero__eyebrow">Профиль</p>
+            <h1>{profileDisplayName}</h1>
+            <p>{profileSubtitle}</p>
             <div className="profile-page__meta">
-              {isAdmin ? <span className="badge badge_soft">{state.products.length} товаров</span> : null}
-              <span className="badge badge_soft">{state.categories.length} категорий</span>
-              <span className="badge badge_soft">
-                {isAdmin ? `Активный розыгрыш: ${activeGiveaway ? "есть" : "нет"}` : `Избранное: ${favoriteProducts.length}`}
-              </span>
-              {isAdmin ? (
-                <span className="badge badge_soft">
-                  Скрыто: {state.products.filter((product) => !product.isVisible).length}
-                </span>
-              ) : null}
+              <span className="badge badge_soft">Избранное: {favoriteProducts.length}</span>
               <span className="badge badge_soft">Тема: {themeModeLabel[themeMode]}</span>
+              {isAdmin ? <span className="badge badge_soft">Администратор</span> : null}
             </div>
           </div>
         </div>
 
-        {expectsAdminHub && !isAdmin ? (
+        {expectsAdminPanel && !isAdmin ? (
           <div className="profile-page__notice">
             <div className="stack-sm">
               <strong>Админ-панель пока недоступна</strong>
-              <span>{adminGuardMessage || "Подтвердите Telegram-сессию, чтобы открыть управление."}</span>
+              <span>{adminGuardMessage || "Подтвердите Telegram-сессию, чтобы открыть административный раздел."}</span>
             </div>
             <button type="button" className="btn btn_secondary btn_compact" onClick={() => void reload()}>
               Обновить статус
@@ -152,11 +151,11 @@ export function ProfilePage() {
               Каталог
             </Link>
             <Link to="/about" className="btn btn_secondary btn_compact">
-              О мастере
+              О продавце
             </Link>
             {isAdmin ? (
-              <Link to="/giveaway" className="btn btn_primary btn_compact">
-                Розыгрыш
+              <Link to="/admin" className="btn btn_primary btn_compact">
+                Админ-панель
               </Link>
             ) : hasContact && sellerContactLink ? (
               <button
@@ -191,99 +190,77 @@ export function ProfilePage() {
         </div>
       </section>
 
-      {isAdmin ? (
-        <AdminPanel />
-      ) : (
-        <>
-          <section className="card stack profile-page__section">
-            <div className="row-between row-wrap">
-              <div className="stack-sm">
-                <p className="hero__eyebrow">Личный раздел</p>
-                <h2 className="section-title">Избранное</h2>
-              </div>
-              <span className="badge badge_soft">{favoriteProducts.length} товаров</span>
-            </div>
-            {isSaving("favorite") ? <small>Синхронизируем избранное...</small> : null}
-            {favoriteProducts.length === 0 ? (
-              <p>Пока нет избранных товаров. Сохраняйте понравившиеся работы и возвращайтесь к ним здесь.</p>
-            ) : (
-              <div className="shelf-row">
-                {favoriteProducts.map((product) => (
-                  <ProductMiniCard
-                    key={product.id}
-                    product={product}
-                    sellerSettings={state.sellerSettings}
-                    imageUrl={getPrimaryProductImage(product.id, state.productImages)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="admin-grid profile-page__user-grid">
-            <article className="card stack-sm profile-page__panel">
-              <p className="hero__eyebrow">Покупка и заказы</p>
-              <h2 className="section-title">Как оформить заказ</h2>
-              <p>Перейдите в каталог, выберите изделие и используйте кнопку покупки или свяжитесь с мастером напрямую.</p>
-              <div className="toolbar">
-                <Link to="/catalog" className="btn btn_secondary btn_compact">
-                  Перейти в каталог
-                </Link>
-                {hasContact && sellerContactLink ? (
-                  <button
-                    type="button"
-                    className="btn btn_primary btn_compact"
-                    onClick={() => openTelegramLink(sellerContactLink)}
-                  >
-                    Написать продавцу
-                  </button>
-                ) : null}
-              </div>
-            </article>
-
-            <article className="card stack-sm profile-page__panel">
-              <p className="hero__eyebrow">О мастере</p>
-              <h2 className="section-title">История и контакты</h2>
-              <p>{state.sellerSettings.shortBio || state.sellerSettings.aboutSeller}</p>
-              <div className="toolbar">
-                <Link to="/about" className="btn btn_secondary btn_compact">
-                  Открыть страницу мастера
-                </Link>
-                {!hasContact ? (
-                  <Link to="/about" className="btn btn_ghost btn_compact">
-                    Где найти контакты
-                  </Link>
-                ) : null}
-              </div>
-            </article>
-          </section>
-
-          <section className="card stack-sm profile-page__panel">
-            <p className="hero__eyebrow">О магазине</p>
-            <h2 className="section-title">Описание и детали</h2>
-            <p>{state.storeSettings.storeDescription}</p>
-            <p>{state.storeSettings.infoBlock}</p>
-            <small>Город мастера: {state.sellerSettings.city}</small>
-          </section>
-        </>
-      )}
-
-      <details className="card disclosure profile-page__diagnostics">
-        <summary className="disclosure__summary">
-          <span>Диагностика</span>
-          <span className="badge badge_soft">Скрытый блок</span>
-        </summary>
-        <div className="disclosure__body stack-sm">
-          <small>Repository: {repositoryKind}</small>
-          <small>Auth verify: {authStatusLabel[authVerificationStatus] ?? authVerificationStatus}</small>
-          <small>Telegram ID: {telegramUserId ?? "не определён"}</small>
-          <small>
-            Telegram bridge: {telegramBridgeInfo.hasBridge ? "найден" : "не найден"} · initData: {" "}
-            {telegramBridgeInfo.hasInitData ? "есть" : "нет"}
-          </small>
-          {adminGuardMessage ? <small>{adminGuardMessage}</small> : null}
+      <section className="card stack profile-page__section">
+        <div className="row-between row-wrap">
+          <div className="stack-sm">
+            <p className="hero__eyebrow">Личный раздел</p>
+            <h2 className="section-title">Избранное</h2>
+          </div>
+          <span className="badge badge_soft">{favoriteProducts.length} товаров</span>
         </div>
-      </details>
+        {isSaving("favorite") ? <small>Синхронизируем избранное...</small> : null}
+        {favoriteProducts.length === 0 ? (
+          <p>Пока нет избранных товаров. Сохраняйте понравившиеся работы и возвращайтесь к ним здесь.</p>
+        ) : (
+          <div className="shelf-row">
+            {favoriteProducts.map((product) => (
+              <ProductMiniCard
+                key={product.id}
+                product={product}
+                sellerSettings={state.sellerSettings}
+                imageUrl={getPrimaryProductImage(product.id, state.productImages)}
+                isAdmin={isAdmin}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="admin-grid profile-page__user-grid">
+        <article className="card stack-sm profile-page__panel">
+          <p className="hero__eyebrow">Покупка и заказы</p>
+          <h2 className="section-title">Как оформить заказ</h2>
+          <p>Перейдите в каталог, выберите изделие и используйте кнопку покупки или свяжитесь с продавцом напрямую.</p>
+          <div className="toolbar">
+            <Link to="/catalog" className="btn btn_secondary btn_compact">
+              Перейти в каталог
+            </Link>
+            {hasContact && sellerContactLink ? (
+              <button
+                type="button"
+                className="btn btn_primary btn_compact"
+                onClick={() => openTelegramLink(sellerContactLink)}
+              >
+                Написать продавцу
+              </button>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="card stack-sm profile-page__panel">
+          <p className="hero__eyebrow">О продавце</p>
+          <h2 className="section-title">История и контакты</h2>
+          <p>{state.sellerSettings.shortBio || state.sellerSettings.aboutSeller}</p>
+          <div className="toolbar">
+            <Link to="/about" className="btn btn_secondary btn_compact">
+              Открыть страницу продавца
+            </Link>
+            {isAdmin ? (
+              <Link to="/admin" className="btn btn_ghost btn_compact">
+                Админ-панель
+              </Link>
+            ) : null}
+          </div>
+        </article>
+      </section>
+
+      <section className="card stack-sm profile-page__panel">
+        <p className="hero__eyebrow">О магазине</p>
+        <h2 className="section-title">Описание и детали</h2>
+        <p>{state.storeSettings.storeDescription}</p>
+        <p>{state.storeSettings.infoBlock}</p>
+        <small>Город продавца: {state.sellerSettings.city || "не указан"}</small>
+      </section>
 
       {repositoryKind === "local" && !telegramUserId && import.meta.env.DEV ? (
         <details className="card disclosure profile-page__diagnostics">

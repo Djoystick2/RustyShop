@@ -24,7 +24,7 @@ function resolveActiveSection(pathname: string): NavSection {
     return "giveaway";
   }
 
-  if (pathname.startsWith("/profile")) {
+  if (pathname.startsWith("/profile") || pathname.startsWith("/admin")) {
     return "profile";
   }
 

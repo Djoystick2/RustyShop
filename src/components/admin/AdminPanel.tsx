@@ -33,6 +33,11 @@ interface SessionFormState {
   status: GiveawaySessionStatus;
 }
 
+interface AdminPanelProps {
+  activeTab?: "work" | "products";
+  onSelectTab?: (tab: "work" | "products") => void;
+}
+
 const sessionStatusLabel: Record<GiveawaySessionStatus, string> = {
   draft: "Черновик",
   active: "Активна",
@@ -136,7 +141,7 @@ function createEmptySessionForm(): SessionFormState {
   };
 }
 
-export function AdminPanel() {
+export function AdminPanel({ activeTab = "work", onSelectTab }: AdminPanelProps) {
   const {
     state,
     canUploadProductImages,
@@ -320,6 +325,8 @@ export function AdminPanel() {
     () => new Set(state.giveawayResults.map((result) => result.productId)),
     [state.giveawayResults]
   );
+  const showWork = activeTab === "work";
+  const showProducts = activeTab === "products";
 
   const visibleProducts = useMemo(() => {
     const normalizedQuery = productQuery.trim().toLowerCase();
@@ -569,7 +576,8 @@ export function AdminPanel() {
 
   return (
     <section className="admin-panel stack-lg">
-      <section className="admin-panel__section stack">
+      {showWork ? (
+        <section className="admin-panel__section stack">
         <div className="admin-panel__section-head">
           <div className="stack-sm admin-panel__section-copy">
             <p className="hero__eyebrow">Тексты / Storefront</p>
@@ -703,9 +711,62 @@ export function AdminPanel() {
             </form>
           </article>
         </div>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="admin-panel__section stack">
+      {showWork ? (
+        <section className="admin-panel__section stack">
+          <div className="admin-panel__section-head">
+            <div className="stack-sm admin-panel__section-copy">
+              <p className="hero__eyebrow">Работа</p>
+              <h2 className="section-title">Быстрые действия</h2>
+            </div>
+          </div>
+
+          <div className="admin-panel__split">
+            <article className="card stack-sm admin-panel__card">
+              <h3>Навигация</h3>
+              <div className="toolbar">
+                <Link to="/" className="btn btn_secondary btn_compact">
+                  Главная
+                </Link>
+                <Link to="/catalog" className="btn btn_secondary btn_compact">
+                  Каталог
+                </Link>
+                <Link to="/giveaway" className="btn btn_secondary btn_compact">
+                  Розыгрыш
+                </Link>
+                <Link to="/about" className="btn btn_ghost btn_compact">
+                  О продавце
+                </Link>
+              </div>
+            </article>
+
+            <article className="card stack-sm admin-panel__card">
+              <h3>Focused editor</h3>
+              <div className="profile-page__meta">
+                <span className="badge badge_soft">{state.homepageSections.length} секций storefront</span>
+                <span className="badge badge_soft">{state.products.length} товаров</span>
+              </div>
+              <div className="toolbar">
+                <button
+                  type="button"
+                  className="btn btn_primary btn_compact"
+                  onClick={() => onSelectTab?.("products")}
+                >
+                  Открыть товары
+                </button>
+                <Link to="/catalog" className="btn btn_ghost btn_compact">
+                  Проверить storefront
+                </Link>
+              </div>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
+      {showProducts ? (
+        <section className="admin-panel__section stack">
         <div className="admin-panel__section-head">
           <div className="stack-sm admin-panel__section-copy">
             <p className="hero__eyebrow">Товары</p>
@@ -1066,9 +1127,11 @@ export function AdminPanel() {
             </div>
           </article>
         </div>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="admin-panel__section stack">
+      {showWork ? (
+        <section className="admin-panel__section stack">
         <div className="admin-panel__section-head">
           <div className="stack-sm admin-panel__section-copy">
             <p className="hero__eyebrow">Розыгрыш</p>
@@ -1354,7 +1417,8 @@ export function AdminPanel() {
         </div>
 
         {giveawayNotice ? <small className="admin-panel__notice">{giveawayNotice}</small> : null}
-      </section>
+        </section>
+      ) : null}
     </section>
   );
 }
