@@ -42,6 +42,7 @@ export interface AppRepository {
   upsertHomepageSection(section: HomepageSection): Promise<HomepageSection>;
   deleteHomepageSection(sectionId: string): Promise<void>;
   upsertProduct(payload: UpsertProductPayload): Promise<{ product: Product; productImages: ProductImage[] }>;
+  deleteProduct(productId: string): Promise<void>;
   updateProductFlags(
     productId: string,
     patch: Pick<Product, "isVisible" | "isAvailable" | "isGiveawayEligible" | "isFeatured">

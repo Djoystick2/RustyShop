@@ -91,6 +91,7 @@ interface AppContextValue {
   deleteHomepageSection: (sectionId: string) => Promise<void>;
   moveHomepageSection: (sectionId: string, direction: -1 | 1) => Promise<void>;
   saveProduct: (input: ProductInput) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
   toggleProductVisibility: (productId: string) => Promise<void>;
   toggleProductAvailability: (productId: string) => Promise<void>;
   toggleProductFeatured: (productId: string) => Promise<void>;
@@ -634,6 +635,33 @@ export function AppProvider({ children }: PropsWithChildren) {
     [guardAdminAction, repository, runWithSaving, syncSupabaseState]
   );
 
+  const deleteProduct = useCallback(
+    async (productId: string) => {
+      if (!guardAdminAction()) {
+        return;
+      }
+      setActionError(null);
+      try {
+        await runWithSaving("product", () => repository.deleteProduct(productId));
+        setState((prev) => ({
+          ...prev,
+          products: prev.products.filter((item) => item.id !== productId),
+          productImages: prev.productImages.filter((image) => image.productId !== productId),
+          favorites: prev.favorites.filter((favorite) => favorite.productId !== productId),
+          giveawayItems: prev.giveawayItems.filter((item) => item.productId !== productId),
+          homepageSections: prev.homepageSections.map((section) => ({
+            ...section,
+            linkedProductIds: section.linkedProductIds.filter((linkedId) => linkedId !== productId)
+          }))
+        }));
+        await syncSupabaseState();
+      } catch (error) {
+        setActionError(mapError(error));
+      }
+    },
+    [guardAdminAction, repository, runWithSaving, syncSupabaseState]
+  );
+
   const toggleProductVisibility = useCallback(
     async (productId: string) => {
       const product = state.products.find((item) => item.id === productId);
@@ -987,6 +1015,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       deleteHomepageSection,
       moveHomepageSection,
       saveProduct,
+      deleteProduct,
       toggleProductVisibility,
       toggleProductAvailability,
       toggleProductFeatured,
@@ -1023,6 +1052,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       deleteHomepageSection,
       moveHomepageSection,
       saveProduct,
+      deleteProduct,
       savingMap,
       setSearchQuery,
       state,

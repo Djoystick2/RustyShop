@@ -119,39 +119,40 @@ export function ProductQuickViewModal({ product, imageUrl, onClose }: ProductQui
             </div>
           ) : null}
 
-          {!isAdmin ? (
-            <>
-              <div className="toolbar product-quick-view__actions">
-                {buyLink ? (
-                  <button
-                    type="button"
-                    className="btn btn_primary"
-                    onClick={() => openTelegramLink(buyLink)}
-                    disabled={product.status === "sold_out"}
-                  >
-                    {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
-                  </button>
-                ) : (
-                  <Link to="/about" className="btn btn_secondary" onClick={onClose}>
-                    Контакты продавца
-                  </Link>
-                )}
-                <button type="button" className="btn btn_secondary" onClick={() => void toggleFavorite(product.id)}>
-                  {isFavorite ? "Убрать из избранного" : "В избранное"}
-                </button>
-                <Link to={`/product/${product.id}`} className="btn btn_ghost" onClick={onClose}>
-                  Открыть полный экран
-                </Link>
-              </div>
-              {hasContact ? (
-                <small>
-                  Связь с мастером: @{state.sellerSettings.telegramUsername || "—"} · {state.sellerSettings.city}
-                </small>
-              ) : (
-                <small>Контакты продавца пока не настроены. Их можно открыть в разделе «О мастере».</small>
-              )}
-            </>
+          <div className="toolbar product-quick-view__actions">
+            {buyLink ? (
+              <button
+                type="button"
+                className="btn btn_primary"
+                onClick={() => openTelegramLink(buyLink)}
+                disabled={product.status === "sold_out"}
+              >
+                {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
+              </button>
+            ) : (
+              <Link to="/about" className="btn btn_secondary" onClick={onClose}>
+                Контакты продавца
+              </Link>
+            )}
+            {!isAdmin ? (
+              <button type="button" className="btn btn_secondary" onClick={() => void toggleFavorite(product.id)}>
+                {isFavorite ? "Убрать из избранного" : "В избранное"}
+              </button>
+            ) : null}
+            <Link to={`/product/${product.id}`} className="btn btn_ghost" onClick={onClose}>
+              Открыть полный экран
+            </Link>
+          </div>
+
+          {hasContact ? (
+            <small>
+              Связь с мастером: @{state.sellerSettings.telegramUsername || "—"} · {state.sellerSettings.city}
+            </small>
           ) : (
+            <small>Контакты продавца пока не настроены. Их можно открыть в разделе «О мастере».</small>
+          )}
+
+          {isAdmin ? (
             <div className="card stack-sm product-quick-view__admin">
               <div className="toolbar">
                 <button type="button" className="btn btn_ghost" onClick={() => void toggleProductVisibility(product.id)}>
@@ -167,12 +168,9 @@ export function ProductQuickViewModal({ product, imageUrl, onClose }: ProductQui
                 <button type="button" className="btn btn_ghost" onClick={() => void toggleProductFeatured(product.id)}>
                   {product.isFeatured ? "Снять рекомендацию" : "Рекомендовать"}
                 </button>
-                <Link to={`/product/${product.id}`} className="btn btn_secondary" onClick={onClose}>
-                  Открыть полный экран
-                </Link>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </section>
     </div>

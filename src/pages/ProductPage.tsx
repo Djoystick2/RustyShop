@@ -151,23 +151,23 @@ export function ProductPage() {
 
             <p className="product-page__description">{product.description}</p>
 
-            {!isAdmin ? (
-              <div className="product-page__action-panel">
-                <div className="toolbar product-page__cta">
-                  {buyLink ? (
-                    <button
-                      type="button"
-                      className="btn btn_primary"
-                      onClick={() => openTelegramLink(buyLink)}
-                      disabled={product.status === "sold_out"}
-                    >
-                      {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
-                    </button>
-                  ) : (
-                    <Link to="/about" className="btn btn_secondary">
-                      Контакты продавца
-                    </Link>
-                  )}
+            <div className="product-page__action-panel">
+              <div className="toolbar product-page__cta">
+                {buyLink ? (
+                  <button
+                    type="button"
+                    className="btn btn_primary"
+                    onClick={() => openTelegramLink(buyLink)}
+                    disabled={product.status === "sold_out"}
+                  >
+                    {state.sellerSettings.purchaseButtonLabel || "Приобрести"}
+                  </button>
+                ) : (
+                  <Link to="/about" className="btn btn_secondary">
+                    Контакты продавца
+                  </Link>
+                )}
+                {!isAdmin ? (
                   <button
                     type="button"
                     className="btn btn_secondary"
@@ -175,18 +175,20 @@ export function ProductPage() {
                   >
                     {isFavorite ? "Убрать из избранного" : "В избранное"}
                   </button>
-                </div>
-                {hasContact ? (
-                  <small className="product-page__contact">
-                    Связь с мастером: @{state.sellerSettings.telegramUsername || "—"} · {state.sellerSettings.city}
-                  </small>
-                ) : (
-                  <small className="product-page__contact">
-                    Контакты продавца пока не настроены. Их можно открыть в разделе «О мастере».
-                  </small>
-                )}
+                ) : null}
               </div>
-            ) : (
+              {hasContact ? (
+                <small className="product-page__contact">
+                  Связь с мастером: @{state.sellerSettings.telegramUsername || "—"} · {state.sellerSettings.city}
+                </small>
+              ) : (
+                <small className="product-page__contact">
+                  Контакты продавца пока не настроены. Их можно открыть в разделе «О мастере».
+                </small>
+              )}
+            </div>
+
+            {isAdmin ? (
               <div className="card stack-sm product-page__admin-panel">
                 <h3>Admin actions</h3>
                 <div className="toolbar">
@@ -210,7 +212,7 @@ export function ProductPage() {
                 </div>
                 <small>Управление лотами и статусом сессий выполняется на странице «Розыгрыш».</small>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </section>

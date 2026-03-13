@@ -4,7 +4,7 @@ import { AdminPanel } from "../components/admin/AdminPanel";
 import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { useAppContext } from "../context/AppContext";
 import { buildSellerContactLink, hasSellerContact } from "../lib/acquire-link";
-import { canViewProduct, getPrimaryProductImage, sortProducts } from "../lib/product-utils";
+import { getPrimaryProductImage } from "../lib/product-utils";
 import { openTelegramLink } from "../lib/telegram";
 
 const authStatusLabel: Record<string, string> = {
@@ -82,15 +82,6 @@ export function ProfilePage() {
     [currentProfile?.id, state.favorites, state.products]
   );
 
-  const storefrontTestProducts = useMemo(
-    () =>
-      sortProducts(
-        state.products.filter((product) => canViewProduct(product, false)).filter((product) => product.isAvailable),
-        "newest"
-      ).slice(0, 3),
-    [state.products]
-  );
-
   const activeGiveaway = useMemo(
     () => state.giveawaySessions.find((session) => session.status === "active") ?? null,
     [state.giveawaySessions]
@@ -121,7 +112,7 @@ export function ProfilePage() {
             <h1>{isAdmin ? "Профиль администратора" : currentProfile.displayName}</h1>
             <p>
               {isAdmin
-                ? "Собрали быстрый доступ к storefront, товарам и розыгрышу без лишней технической нагрузки."
+                ? "Компактный admin hub: тексты, товары, розыгрыш и живой storefront-сценарий без лишних переходов."
                 : currentProfile.about || "Здесь собраны избранное, связи с мастером и быстрые переходы по магазину."}
             </p>
             <div className="profile-page__meta">
@@ -130,6 +121,11 @@ export function ProfilePage() {
               <span className="badge badge_soft">
                 {isAdmin ? `Активный розыгрыш: ${activeGiveaway ? "есть" : "нет"}` : `Избранное: ${favoriteProducts.length}`}
               </span>
+              {isAdmin ? (
+                <span className="badge badge_soft">
+                  Скрыто: {state.products.filter((product) => !product.isVisible).length}
+                </span>
+              ) : null}
               <span className="badge badge_soft">Тема: {themeModeLabel[themeMode]}</span>
             </div>
           </div>
@@ -196,90 +192,7 @@ export function ProfilePage() {
       </section>
 
       {isAdmin ? (
-        <>
-          <section className="admin-grid profile-page__hub-grid">
-            <article className="card stack-sm profile-page__panel">
-              <p className="hero__eyebrow">Storefront</p>
-              <h2 className="section-title">Тексты и подача</h2>
-              <p>Обновляйте бренд, короткие описания, контактный текст и кнопку покупки в одном месте.</p>
-              <div className="profile-page__meta">
-                <span className="badge badge_soft">{state.storeSettings.storeName}</span>
-                <span className="badge badge_soft">{state.sellerSettings.purchaseButtonLabel}</span>
-              </div>
-            </article>
-
-            <article className="card stack-sm profile-page__panel">
-              <p className="hero__eyebrow">Товары</p>
-              <h2 className="section-title">Управление витриной</h2>
-              <p>Быстро переходите в каталог и карточки товаров, не теряя доступ к пользовательскому сценарию.</p>
-              <div className="toolbar">
-                <Link to="/catalog" className="btn btn_secondary btn_compact">
-                  Открыть каталог
-                </Link>
-                <Link to="/" className="btn btn_secondary btn_compact">
-                  Посмотреть storefront
-                </Link>
-              </div>
-            </article>
-
-            <article className="card stack-sm profile-page__panel">
-              <p className="hero__eyebrow">Розыгрыш</p>
-              <h2 className="section-title">Сессии и спины</h2>
-              <p>
-                {activeGiveaway
-                  ? `Сейчас активна сессия «${activeGiveaway.title}».`
-                  : "Активной сессии нет, можно открыть управление и подготовить новую."}
-              </p>
-              <Link to="/giveaway" className="btn btn_primary btn_compact">
-                Перейти к розыгрышу
-              </Link>
-            </article>
-
-            <article className="card stack-sm profile-page__panel">
-              <p className="hero__eyebrow">Проверка покупки</p>
-              <h2 className="section-title">Пользовательский сценарий</h2>
-              <p>Администратор видит тот же CTA покупки, чтобы быстро проверять storefront-сценарий без смены роли.</p>
-              <Link to="/about" className="btn btn_secondary btn_compact">
-                Контакты и страница мастера
-              </Link>
-            </article>
-          </section>
-
-          <section className="stack profile-page__admin-section">
-            <div className="row-between row-wrap">
-              <div className="stack-sm">
-                <p className="hero__eyebrow">Редактирование</p>
-                <h2 className="section-title">Тексты storefront и продавца</h2>
-              </div>
-            </div>
-            <AdminPanel />
-          </section>
-
-          <section className="card stack profile-page__section">
-            <div className="row-between row-wrap">
-              <div className="stack-sm">
-                <p className="hero__eyebrow">Проверка storefront</p>
-                <h2 className="section-title">Быстрый тест покупки</h2>
-              </div>
-              <span className="badge badge_soft">{storefrontTestProducts.length} товара</span>
-            </div>
-            {storefrontTestProducts.length === 0 ? (
-              <p>Нет доступных товаров для быстрого теста покупки.</p>
-            ) : (
-              <div className="shelf-row">
-                {storefrontTestProducts.map((product) => (
-                  <ProductMiniCard
-                    key={product.id}
-                    product={product}
-                    sellerSettings={state.sellerSettings}
-                    imageUrl={getPrimaryProductImage(product.id, state.productImages)}
-                    isAdmin={false}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        </>
+        <AdminPanel />
       ) : (
         <>
           <section className="card stack profile-page__section">

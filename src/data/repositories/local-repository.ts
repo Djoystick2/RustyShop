@@ -159,6 +159,23 @@ export function createLocalRepository(): AppRepository {
       savePayload(payload);
       return { product, productImages: images };
     },
+    async deleteProduct(productId) {
+      const payload = ensurePayload();
+      const hasGiveawayHistory = payload.giveawayResults.some((result) => result.productId === productId);
+      if (hasGiveawayHistory) {
+        throw new Error("Нельзя удалить товар, который уже участвовал в результатах розыгрыша.");
+      }
+
+      payload.products = payload.products.filter((item) => item.id !== productId);
+      payload.productImages = payload.productImages.filter((image) => image.productId !== productId);
+      payload.favorites = payload.favorites.filter((favorite) => favorite.productId !== productId);
+      payload.giveawayItems = payload.giveawayItems.filter((item) => item.productId !== productId);
+      payload.homepageSections = payload.homepageSections.map((section) => ({
+        ...section,
+        linkedProductIds: section.linkedProductIds.filter((linkedId) => linkedId !== productId)
+      }));
+      savePayload(payload);
+    },
     async updateProductFlags(productId, patch) {
       const payload = ensurePayload();
       let updated = payload.products.find((item) => item.id === productId);

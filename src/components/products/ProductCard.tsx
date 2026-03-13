@@ -98,25 +98,29 @@ export function ProductCard({
         </div>
 
         <div className="product-card__actions">
+          {canBuyViaTelegram ? (
+            <button
+              type="button"
+              className="btn btn_primary btn_compact"
+              onClick={() => openTelegramLink(buyLink!)}
+              disabled={product.status === "sold_out"}
+            >
+              {sellerSettings.purchaseButtonLabel || "Приобрести"}
+            </button>
+          ) : (
+            <Link to="/about" className="btn btn_secondary btn_compact">
+              Контакты продавца
+            </Link>
+          )}
           {!isAdmin ? (
-            canBuyViaTelegram ? (
-              <button
-                type="button"
-                className="btn btn_primary btn_compact"
-                onClick={() => openTelegramLink(buyLink!)}
-                disabled={product.status === "sold_out"}
-              >
-                {sellerSettings.purchaseButtonLabel || "Приобрести"}
-              </button>
-            ) : (
-              <Link to="/about" className="btn btn_secondary btn_compact">
-                Контакты продавца
-              </Link>
-            )
-          ) : null}
-          <Link to={`/product/${product.id}`} className="btn btn_secondary btn_compact">
-            {isAdmin ? "Открыть управление" : "Подробнее"}
-          </Link>
+            <Link to={`/product/${product.id}`} className="btn btn_secondary btn_compact">
+              Подробнее
+            </Link>
+          ) : (
+            <Link to={`/product/${product.id}`} className="btn btn_secondary btn_compact">
+              Открыть управление
+            </Link>
+          )}
         </div>
 
         {isAdmin ? (

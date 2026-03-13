@@ -471,6 +471,85 @@ export function createSupabaseRepository(): AppRepository {
         productImages: imagesResult.data.map(mapProductImage)
       };
     },
+    async deleteProduct(productId) {
+      const client = assertClient();
+      const safeProductId = assertUuid(productId, "product.id");
+
+      const giveawayHistory = await client
+        .from("giveaway_results")
+        .select("id")
+        .eq("product_id", safeProductId)
+        .limit(1);
+
+      if (giveawayHistory.error) {
+        throw new Error(formatDbError(giveawayHistory.error));
+      }
+
+      if ((giveawayHistory.data ?? []).length > 0) {
+        throw new Error("Нельзя удалить товар, который уже участвовал в результатах розыгрыша.");
+      }
+
+      const imageRows = await client
+        .from("product_images")
+        .select("storage_path")
+        .eq("product_id", safeProductId);
+
+      if (imageRows.error) {
+        throw new Error(formatDbError(imageRows.error));
+      }
+
+      const bucket = getStorageBucketName();
+      const storagePaths = (imageRows.data ?? [])
+        .map((row: { storage_path: string | null }) => row.storage_path)
+        .filter((path: string | null): path is string => Boolean(path));
+
+      if (storagePaths.length > 0) {
+        const storageResult = await client.storage.from(bucket).remove(storagePaths);
+        if (storageResult.error) {
+          throw new Error(formatStorageError(storageResult.error, bucket));
+        }
+      }
+
+      const giveawayItemsDelete = await client
+        .from("giveaway_items")
+        .delete()
+        .eq("product_id", safeProductId);
+
+      if (giveawayItemsDelete.error) {
+        throw new Error(formatDbError(giveawayItemsDelete.error));
+      }
+
+      const deleteResult = await client.from("products").delete().eq("id", safeProductId);
+      if (deleteResult.error) {
+        throw new Error(formatDbError(deleteResult.error));
+      }
+
+      const homepageSections = await client
+        .from("homepage_sections")
+        .select("id, linked_product_ids");
+
+      if (homepageSections.error) {
+        throw new Error(formatDbError(homepageSections.error));
+      }
+
+      const impactedSections = (homepageSections.data ?? []).filter((section: { id: string; linked_product_ids: string[] | null }) =>
+        (section.linked_product_ids ?? []).includes(safeProductId)
+      );
+
+      for (const section of impactedSections) {
+        const nextIds = (section.linked_product_ids ?? []).filter(
+          (linkedId: string) => linkedId !== safeProductId
+        );
+        const updateSection = await client
+          .from("homepage_sections")
+          .update({ linked_product_ids: nextIds })
+          .eq("id", section.id);
+
+        if (updateSection.error) {
+          throw new Error(formatDbError(updateSection.error));
+        }
+      }
+    },
     async updateProductFlags(productId, patch) {
       const client = assertClient();
       const safeProductId = assertUuid(productId, "product.id");

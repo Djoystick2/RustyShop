@@ -31,6 +31,9 @@ export function createUnavailableRepository(message: string): AppRepository {
     async upsertProduct(_: UpsertProductPayload) {
       fail(message);
     },
+    async deleteProduct() {
+      fail(message);
+    },
     async updateProductFlags(_: string, __: Pick<Product, "isVisible" | "isAvailable" | "isGiveawayEligible" | "isFeatured">) {
       fail(message);
     },
@@ -66,4 +69,3 @@ export function createUnavailableRepository(message: string): AppRepository {
     }
   };
 }
-

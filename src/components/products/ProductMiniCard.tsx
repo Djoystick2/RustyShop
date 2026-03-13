@@ -75,8 +75,8 @@ export function ProductMiniCard({
             {product.isGiveawayEligible ? <span className="badge badge_giveaway">Розыгрыш</span> : null}
           </div>
         ) : null}
-        {!isAdmin ? (
-          canBuyViaTelegram ? (
+        <div className={`toolbar${isAdmin ? " mini-product-card__actions" : ""}`}>
+          {canBuyViaTelegram ? (
             <button
               type="button"
               className="btn btn_secondary btn_compact mini-product-card__action"
@@ -89,12 +89,13 @@ export function ProductMiniCard({
             <Link to="/about" className="btn btn_secondary btn_compact mini-product-card__action">
               Контакты
             </Link>
-          )
-        ) : (
-          <Link to={`/product/${product.id}`} className="btn btn_secondary btn_compact mini-product-card__action">
-            Открыть
-          </Link>
-        )}
+          )}
+          {isAdmin ? (
+            <Link to={`/product/${product.id}`} className="btn btn_ghost btn_compact mini-product-card__action">
+              Открыть
+            </Link>
+          ) : null}
+        </div>
       </div>
     </article>
   );
