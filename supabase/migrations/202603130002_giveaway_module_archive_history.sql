@@ -38,9 +38,15 @@ alter table giveaway_results
 update giveaway_results as results
 set
   giveaway_item_id = items.id,
-  prize_title = coalesce(nullif(results.prize_title, ''), products.title)
+  prize_title = coalesce(
+    nullif(results.prize_title, ''),
+    (
+      select products.title
+      from products
+      where products.id = results.product_id
+    )
+  )
 from giveaway_items as items
-left join products on products.id = results.product_id
 where items.session_id = results.session_id
   and items.product_id is not distinct from results.product_id
   and results.giveaway_item_id is null;
