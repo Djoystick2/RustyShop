@@ -5,7 +5,7 @@ import { BottomNav } from "./BottomNav";
 
 export function AppShell() {
   const location = useLocation();
-  const { actionError, clearActionError, repositoryKind } = useAppContext();
+  const { actionError, clearActionError, isBootstrapping, repositoryKind } = useAppContext();
 
   const isProfileArea = location.pathname.startsWith("/profile");
   const isSoftActionError = Boolean(actionError?.includes("Mini App"));
@@ -13,21 +13,21 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <main className="app-main">
-        {repositoryKind === "unavailable" ? (
+        {!isBootstrapping && repositoryKind === "unavailable" ? (
           <section className="error-banner">
             <strong>Конфигурация окружения не завершена.</strong>
             <span>Приложение не может загрузить данные.</span>
           </section>
         ) : null}
 
-        {repositoryKind === "local" && !isProfileArea ? (
+        {!isBootstrapping && repositoryKind === "local" && !isProfileArea ? (
           <section className="mode-banner mode-banner_compact">
             <strong>Локальный режим:</strong>
             <span>данные сохраняются только на этом устройстве.</span>
           </section>
         ) : null}
 
-        {actionError ? (
+        {!isBootstrapping && actionError ? (
           <section className={isSoftActionError ? "notice-banner" : "error-banner"}>
             <span>{actionError}</span>
             <button type="button" className="btn btn_ghost" onClick={clearActionError}>
@@ -40,7 +40,7 @@ export function AppShell() {
           <Outlet />
         </DataStateBoundary>
       </main>
-      <BottomNav />
+      {isBootstrapping ? null : <BottomNav />}
     </div>
   );
 }

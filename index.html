@@ -3,10 +3,241 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Ярмарка мастера</title>
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function () {
+        var key = "rustyshop-theme-mode";
+        try {
+          var stored = window.localStorage.getItem(key);
+          if (stored === "light" || stored === "dark") {
+            document.documentElement.setAttribute("data-theme", stored);
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (_error) {
+          document.documentElement.removeAttribute("data-theme");
+        }
+      })();
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        --boot-bg: #fff4e5;
+        --boot-glow:
+          radial-gradient(circle at top left, rgba(255, 205, 148, 0.5), transparent 34%),
+          radial-gradient(circle at top right, rgba(255, 234, 205, 0.92), transparent 28%),
+          linear-gradient(180deg, #fff8ee 0%, #ffecd0 100%);
+        --boot-card: rgba(255, 253, 249, 0.92);
+        --boot-card-border: rgba(215, 180, 143, 0.8);
+        --boot-text: #3b281c;
+        --boot-muted: #775843;
+        --boot-accent: #d87434;
+        --boot-sheen: rgba(255, 191, 117, 0.42);
+      }
+
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --boot-bg: #0f141a;
+        --boot-glow:
+          radial-gradient(circle at top left, rgba(255, 179, 102, 0.12), transparent 34%),
+          radial-gradient(circle at top right, rgba(85, 133, 196, 0.12), transparent 28%),
+          linear-gradient(180deg, #151c24 0%, #0b1015 100%);
+        --boot-card: rgba(22, 29, 38, 0.92);
+        --boot-card-border: rgba(83, 104, 126, 0.76);
+        --boot-text: #eef4fb;
+        --boot-muted: #b0bdcb;
+        --boot-accent: #ffc88e;
+        --boot-sheen: rgba(255, 200, 142, 0.2);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          color-scheme: dark;
+          --boot-bg: #0f141a;
+          --boot-glow:
+            radial-gradient(circle at top left, rgba(255, 179, 102, 0.12), transparent 34%),
+            radial-gradient(circle at top right, rgba(85, 133, 196, 0.12), transparent 28%),
+            linear-gradient(180deg, #151c24 0%, #0b1015 100%);
+          --boot-card: rgba(22, 29, 38, 0.92);
+          --boot-card-border: rgba(83, 104, 126, 0.76);
+          --boot-text: #eef4fb;
+          --boot-muted: #b0bdcb;
+          --boot-accent: #ffc88e;
+          --boot-sheen: rgba(255, 200, 142, 0.2);
+        }
+      }
+
+      html,
+      body,
+      #root {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        font-family: "Nunito", "Trebuchet MS", "Segoe UI", sans-serif;
+        background-color: var(--boot-bg);
+        background-image: var(--boot-glow);
+        color: var(--boot-text);
+      }
+
+      .boot-splash {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .boot-splash__card {
+        width: min(100%, 420px);
+        padding: 24px;
+        border-radius: 28px;
+        background: var(--boot-card);
+        border: 1px solid var(--boot-card-border);
+        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(16px);
+      }
+
+      .boot-splash__brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .boot-splash__mark {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #fff7ef;
+        background:
+          radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.24), transparent 42%),
+          linear-gradient(145deg, #ef9961, #d87434);
+        box-shadow: 0 12px 24px rgba(216, 116, 52, 0.28);
+      }
+
+      .boot-splash__eyebrow {
+        margin: 0 0 6px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--boot-accent);
+      }
+
+      .boot-splash__title {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.15;
+      }
+
+      .boot-splash__text {
+        margin: 8px 0 0;
+        color: var(--boot-muted);
+        line-height: 1.45;
+      }
+
+      .boot-splash__pulse {
+        margin-top: 22px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .boot-splash__pulse span {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--boot-accent);
+        opacity: 0.36;
+        animation: bootPulse 1.4s ease-in-out infinite;
+      }
+
+      .boot-splash__pulse span:nth-child(2) {
+        animation-delay: 0.18s;
+      }
+
+      .boot-splash__pulse span:nth-child(3) {
+        animation-delay: 0.36s;
+      }
+
+      .boot-splash__skeleton {
+        margin-top: 20px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .boot-splash__line {
+        display: block;
+        width: 100%;
+        height: 11px;
+        border-radius: 999px;
+        background:
+          linear-gradient(90deg, transparent 0%, var(--boot-sheen) 45%, transparent 100%),
+          rgba(127, 108, 93, 0.12);
+        background-size: 220px 100%, auto;
+        animation: bootSheen 1.8s linear infinite;
+      }
+
+      .boot-splash__line_wide {
+        width: 88%;
+      }
+
+      .boot-splash__line_short {
+        width: 62%;
+      }
+
+      @keyframes bootPulse {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.34;
+        }
+
+        50% {
+          transform: translateY(-4px);
+          opacity: 0.9;
+        }
+      }
+
+      @keyframes bootSheen {
+        from {
+          background-position: -240px 0, 0 0;
+        }
+
+        to {
+          background-position: 240px 0, 0 0;
+        }
+      }
+    </style>
+    <title>RustyShop</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-splash" aria-hidden="true">
+        <section class="boot-splash__card">
+          <div class="boot-splash__brand">
+            <div class="boot-splash__mark">RS</div>
+            <div>
+              <p class="boot-splash__eyebrow">RustyShop</p>
+              <h1 class="boot-splash__title">Собираем уютную витрину</h1>
+              <p class="boot-splash__text">Товары и тексты уже подтягиваются.</p>
+            </div>
+          </div>
+          <div class="boot-splash__pulse">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="boot-splash__skeleton">
+            <span class="boot-splash__line boot-splash__line_wide"></span>
+            <span class="boot-splash__line"></span>
+            <span class="boot-splash__line boot-splash__line_short"></span>
+          </div>
+        </section>
+      </div>
+    </div>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

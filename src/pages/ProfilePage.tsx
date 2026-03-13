@@ -1,20 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ProductMiniCard } from "../components/products/ProductMiniCard";
 import { useAppContext } from "../context/AppContext";
 import { buildSellerContactLink, hasSellerContact } from "../lib/acquire-link";
 import { getPrimaryProductImage } from "../lib/product-utils";
 import { openTelegramLink } from "../lib/telegram";
-
-type ThemeMode = "system" | "light" | "dark";
+import type { ThemeMode } from "../lib/theme";
 
 const themeModeLabel: Record<ThemeMode, string> = {
   system: "Как в устройстве",
   light: "Светлая",
   dark: "Тёмная"
 };
-
-const PROFILE_THEME_STORAGE_KEY = "rustyshop-theme-mode";
 
 function buildTelegramDisplayName(
   firstName?: string,
@@ -40,35 +37,13 @@ export function ProfilePage() {
     reload,
     state,
     switchProfile,
+    themeMode,
     telegramUser,
     telegramUserId,
     repositoryKind,
-    isSaving
+    isSaving,
+    setThemeMode
   } = useAppContext();
-
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") {
-      return "system";
-    }
-
-    const stored = window.localStorage.getItem(PROFILE_THEME_STORAGE_KEY);
-    return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(PROFILE_THEME_STORAGE_KEY, themeMode);
-
-    if (themeMode === "system") {
-      document.documentElement.removeAttribute("data-theme");
-      return;
-    }
-
-    document.documentElement.setAttribute("data-theme", themeMode);
-  }, [themeMode]);
 
   const sellerContactLink = buildSellerContactLink(
     state.sellerSettings,

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { getTelegramVerifyConfig } from "../config/runtime";
 import { createId, createUuid } from "../lib/id";
+import { applyThemeMode, persistThemeMode, readStoredThemeMode, type ThemeMode } from "../lib/theme";
 import {
   resolveTelegramRuntimeContext,
   verifyTelegramInitData
@@ -72,6 +73,7 @@ interface AppContextValue {
   state: AppState;
   currentProfile: Profile | null;
   isAdmin: boolean;
+  themeMode: ThemeMode;
   telegramUser: TelegramWebAppUser | null;
   telegramUserId: number | null;
   telegramBridgeInfo: TelegramBridgeInfo;
@@ -85,6 +87,7 @@ interface AppContextValue {
   isSaving: (key: SavingKey) => boolean;
   clearActionError: () => void;
   reload: () => Promise<void>;
+  setThemeMode: (mode: ThemeMode) => void;
   setSearchQuery: (value: string) => void;
   toggleFavorite: (productId: string) => Promise<void>;
   saveCategory: (input: CategoryInput) => Promise<void>;
@@ -152,6 +155,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => readStoredThemeMode());
   const [authVerificationStatus, setAuthVerificationStatus] =
     useState<AuthVerificationStatus>("idle");
   const [authVerificationMessage, setAuthVerificationMessage] = useState<string | null>(null);
@@ -174,6 +178,11 @@ export function AppProvider({ children }: PropsWithChildren) {
     giveaway: false
   });
   const telegramUserId = telegramUser?.id ?? null;
+
+  useEffect(() => {
+    persistThemeMode(themeMode);
+    applyThemeMode(themeMode);
+  }, [themeMode]);
 
   const runWithSaving = useCallback(async <T,>(key: SavingKey, action: () => Promise<T>) => {
     setSavingMap((prev) => ({ ...prev, [key]: true }));
@@ -387,6 +396,10 @@ export function AppProvider({ children }: PropsWithChildren) {
 
   const setSearchQuery = useCallback((value: string) => {
     setState((prev) => ({ ...prev, searchQuery: value }));
+  }, []);
+
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setThemeModeState(mode);
   }, []);
 
   const switchProfile = useCallback((profileId: string) => {
@@ -997,6 +1010,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       state,
       currentProfile,
       isAdmin,
+      themeMode,
       telegramUser,
       telegramUserId,
       telegramBridgeInfo,
@@ -1010,6 +1024,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       isSaving: (key) => Boolean(savingMap[key]),
       clearActionError,
       reload,
+      setThemeMode,
       setSearchQuery,
       toggleFavorite,
       saveCategory,
@@ -1048,8 +1063,10 @@ export function AppProvider({ children }: PropsWithChildren) {
       reload,
       repository.kind,
       repository.uploadProductImages,
+      setThemeMode,
       telegramUser,
       telegramBridgeInfo,
+      themeMode,
       saveCategory,
       saveHomepageSection,
       deleteHomepageSection,
