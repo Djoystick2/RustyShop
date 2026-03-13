@@ -51,7 +51,12 @@ export function AdminPanel() {
             onChange={(event) => setBrandForm((prev) => ({ ...prev, heroBadge: event.target.value }))}
           />
         </label>
-        <button className="btn btn_primary" type="submit" disabled={isSaving("settings_store")}>
+        <button
+          className="btn btn_primary"
+          type="submit"
+          disabled={isSaving("settings_store")}
+          aria-busy={isSaving("settings_store")}
+        >
           {isSaving("settings_store") ? "Сохраняем..." : "Сохранить"}
         </button>
       </form>

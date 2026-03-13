@@ -380,6 +380,7 @@ export function GiveawayPage() {
                 type="button"
                 className="btn btn_secondary"
                 disabled={isSaving("giveaway") || isSpinning}
+                aria-busy={isSaving("giveaway")}
                 onClick={() => void handleMoveToDraft()}
               >
                 Вернуть в черновик
@@ -389,6 +390,7 @@ export function GiveawayPage() {
                 type="button"
                 className="btn btn_primary"
                 disabled={isSaving("giveaway") || isSpinning || remainingItems.length === 0}
+                aria-busy={isSaving("giveaway")}
                 onClick={() => void handleActivateSession()}
               >
                 Открыть сессию
@@ -398,6 +400,7 @@ export function GiveawayPage() {
               type="button"
               className="btn btn_secondary"
               disabled={isSaving("giveaway") || isSpinning || selectedSession.status === "completed"}
+              aria-busy={isSaving("giveaway")}
               onClick={() => void handleFinishSession()}
             >
               Завершить
@@ -449,7 +452,12 @@ export function GiveawayPage() {
               </select>
             </label>
             <div className="toolbar">
-              <button className="btn btn_primary" type="submit" disabled={isSaving("giveaway")}>
+              <button
+                className="btn btn_primary"
+                type="submit"
+                disabled={isSaving("giveaway")}
+                aria-busy={isSaving("giveaway")}
+              >
                 {sessionForm.id ? "Сохранить сессию" : "Создать сессию"}
               </button>
               {sessionForm.id ? (
@@ -552,6 +560,7 @@ export function GiveawayPage() {
                 className="btn btn_secondary"
                 onClick={() => void persistSpinDuration()}
                 disabled={isSpinning || isSaving("giveaway")}
+                aria-busy={isSaving("giveaway")}
               >
                 Сохранить длительность
               </button>
@@ -559,6 +568,7 @@ export function GiveawayPage() {
                 type="button"
                 className="btn btn_primary"
                 onClick={() => void handleSpin()}
+                aria-busy={isSpinning || isSaving("giveaway")}
                 disabled={
                   isSpinning ||
                   isSaving("giveaway") ||
@@ -616,6 +626,7 @@ export function GiveawayPage() {
             <button
               className="btn btn_secondary"
               type="submit"
+              aria-busy={isSaving("giveaway")}
               disabled={
                 !lotProductId ||
                 availableProductsForLot.length === 0 ||
@@ -643,6 +654,7 @@ export function GiveawayPage() {
                   <button
                     type="button"
                     className="btn btn_ghost"
+                    aria-busy={isSaving("giveaway")}
                     disabled={
                       isSaving("giveaway") ||
                       isSpinning ||
