@@ -20,7 +20,7 @@ export function ProductMiniCard({
   onOpen
 }: ProductMiniCardProps) {
   const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
-  const buyLink = buildAcquireLink(sellerSettings, product.title);
+  const buyLink = buildAcquireLink(sellerSettings, product);
   const canBuyViaTelegram = Boolean(buyLink);
   const hasBadges = product.status === "new" || product.isFeatured || product.isGiveawayEligible;
   const availabilityLabel =

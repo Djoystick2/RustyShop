@@ -1,5 +1,11 @@
 import type { SellerSettings } from "../types/entities";
 
+interface PurchaseProductContext {
+  id: string;
+  title: string;
+  priceText: string;
+}
+
 function normalizeTelegramLink(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) {
@@ -44,25 +50,39 @@ function resolveSellerTelegramLink(seller: SellerSettings): string | null {
   return null;
 }
 
-function buildPurchaseMessage(template: string, productTitle: string): string {
+function buildProductLink(productId: string): string {
+  if (typeof window === "undefined") {
+    return `#/product/${productId}`;
+  }
+
+  return `${window.location.origin}${window.location.pathname}#/product/${productId}`;
+}
+
+function buildPurchaseMessage(template: string, product: PurchaseProductContext): string {
   const safeTemplate = template.trim();
   if (!safeTemplate) {
-    return `Здравствуйте! Хочу приобрести товар: ${productTitle}`;
+    return `Здравствуйте! Хочу приобрести товар: ${product.title}`;
   }
+
+  const resolved = safeTemplate
+    .replaceAll("{product}", product.title)
+    .replaceAll("{price}", product.priceText)
+    .replaceAll("{link}", buildProductLink(product.id))
+    .replaceAll("{article}", "");
 
   if (!safeTemplate.includes("{product}")) {
-    return `${safeTemplate} ${productTitle}`.trim();
+    return `${resolved} ${product.title}`.trim();
   }
 
-  return safeTemplate.replaceAll("{product}", productTitle);
+  return resolved;
 }
 
 export function hasSellerContact(seller: SellerSettings): boolean {
   return Boolean(resolveSellerTelegramLink(seller));
 }
 
-export function buildAcquireLink(seller: SellerSettings, productTitle: string): string | null {
-  const message = buildPurchaseMessage(seller.purchaseMessageTemplate, productTitle);
+export function buildAcquireLink(seller: SellerSettings, product: PurchaseProductContext): string | null {
+  const message = buildPurchaseMessage(seller.purchaseMessageTemplate, product);
   const encoded = encodeURIComponent(message);
   const targetLink = resolveSellerTelegramLink(seller);
   if (!targetLink) {

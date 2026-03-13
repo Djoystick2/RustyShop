@@ -70,7 +70,7 @@ export function ProductQuickViewModal({ product, imageUrl, onClose }: ProductQui
     [currentProfile?.id, product.id, state.favorites]
   );
 
-  const buyLink = buildAcquireLink(state.sellerSettings, product.title);
+  const buyLink = buildAcquireLink(state.sellerSettings, product);
   const hasContact = hasSellerContact(state.sellerSettings);
   const category = state.categories.find((item) => item.id === product.categoryId);
   const badges = getStatusBadges(product);

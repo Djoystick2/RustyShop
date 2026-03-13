@@ -48,7 +48,7 @@ export function ProductCard({
   onToggleAvailability,
   onToggleFeatured
 }: ProductCardProps) {
-  const buyLink = buildAcquireLink(sellerSettings, product.title);
+  const buyLink = buildAcquireLink(sellerSettings, product);
   const canBuyViaTelegram = Boolean(buyLink);
   const mediaSrc = imageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;
   const statusBadges = buildStatusBadges(product);

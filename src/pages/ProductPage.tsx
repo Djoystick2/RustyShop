@@ -75,7 +75,7 @@ export function ProductPage() {
 
   const images = getProductImages(product.id, state.productImages);
   const activeImage = images[activeImageIndex]?.url ?? images[0]?.url ?? PRODUCT_PLACEHOLDER_IMAGE;
-  const buyLink = buildAcquireLink(state.sellerSettings, product.title);
+  const buyLink = buildAcquireLink(state.sellerSettings, product);
   const hasContact = hasSellerContact(state.sellerSettings);
   const category = state.categories.find((item) => item.id === product.categoryId);
   const recommendations = sortProducts(
