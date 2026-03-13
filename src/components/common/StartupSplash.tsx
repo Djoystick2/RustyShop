@@ -1,28 +1,18 @@
+const splashImage = new URL("../../../loadpage.png", import.meta.url).href;
+
 export function StartupSplash() {
   return (
     <div className="boot-splash" role="status" aria-live="polite">
-      <section className="boot-splash__card">
-        <div className="boot-splash__brand">
-          <div className="boot-splash__mark" aria-hidden>
-            <span>RS</span>
-          </div>
-          <div className="boot-splash__copy">
-            <p className="boot-splash__eyebrow">RustyShop</p>
-            <h1 className="boot-splash__title">Собираем уютную витрину</h1>
-            <p className="boot-splash__text">Товары, тексты и giveaway уже подтягиваются.</p>
-          </div>
-        </div>
-
-        <div className="boot-splash__pulse" aria-hidden>
-          <span />
-          <span />
-          <span />
-        </div>
-
-        <div className="boot-splash__skeleton" aria-hidden>
-          <span className="boot-splash__line boot-splash__line_wide" />
-          <span className="boot-splash__line" />
-          <span className="boot-splash__line boot-splash__line_short" />
+      <img className="boot-splash__image" src={splashImage} alt="" aria-hidden />
+      <div className="boot-splash__overlay" aria-hidden />
+      <section className="boot-splash__footer">
+        <div className="boot-splash__loading" aria-label="Загрузка">
+          <span>Загрузка</span>
+          <span className="boot-splash__dots" aria-hidden>
+            <span>.</span>
+            <span>.</span>
+            <span>.</span>
+          </span>
         </div>
       </section>
     </div>

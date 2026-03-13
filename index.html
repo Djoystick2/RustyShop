@@ -20,53 +20,6 @@
       })();
     </script>
     <style>
-      :root {
-        color-scheme: light;
-        --boot-bg: #fff4e5;
-        --boot-glow:
-          radial-gradient(circle at top left, rgba(255, 205, 148, 0.5), transparent 34%),
-          radial-gradient(circle at top right, rgba(255, 234, 205, 0.92), transparent 28%),
-          linear-gradient(180deg, #fff8ee 0%, #ffecd0 100%);
-        --boot-card: rgba(255, 253, 249, 0.92);
-        --boot-card-border: rgba(215, 180, 143, 0.8);
-        --boot-text: #3b281c;
-        --boot-muted: #775843;
-        --boot-accent: #d87434;
-        --boot-sheen: rgba(255, 191, 117, 0.42);
-      }
-
-      :root[data-theme="dark"] {
-        color-scheme: dark;
-        --boot-bg: #0f141a;
-        --boot-glow:
-          radial-gradient(circle at top left, rgba(255, 179, 102, 0.12), transparent 34%),
-          radial-gradient(circle at top right, rgba(85, 133, 196, 0.12), transparent 28%),
-          linear-gradient(180deg, #151c24 0%, #0b1015 100%);
-        --boot-card: rgba(22, 29, 38, 0.92);
-        --boot-card-border: rgba(83, 104, 126, 0.76);
-        --boot-text: #eef4fb;
-        --boot-muted: #b0bdcb;
-        --boot-accent: #ffc88e;
-        --boot-sheen: rgba(255, 200, 142, 0.2);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          color-scheme: dark;
-          --boot-bg: #0f141a;
-          --boot-glow:
-            radial-gradient(circle at top left, rgba(255, 179, 102, 0.12), transparent 34%),
-            radial-gradient(circle at top right, rgba(85, 133, 196, 0.12), transparent 28%),
-            linear-gradient(180deg, #151c24 0%, #0b1015 100%);
-          --boot-card: rgba(22, 29, 38, 0.92);
-          --boot-card-border: rgba(83, 104, 126, 0.76);
-          --boot-text: #eef4fb;
-          --boot-muted: #b0bdcb;
-          --boot-accent: #ffc88e;
-          --boot-sheen: rgba(255, 200, 142, 0.2);
-        }
-      }
-
       html,
       body,
       #root {
@@ -76,138 +29,93 @@
 
       body {
         font-family: "Nunito", "Trebuchet MS", "Segoe UI", sans-serif;
-        background-color: var(--boot-bg);
-        background-image: var(--boot-glow);
-        color: var(--boot-text);
+        background: #160f0b;
+        color: #fff7f1;
       }
 
       .boot-splash {
+        position: relative;
         min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 24px;
+        min-height: 100svh;
+        overflow: hidden;
+        background: #160f0b;
       }
 
-      .boot-splash__card {
-        width: min(100%, 420px);
-        padding: 24px;
-        border-radius: 28px;
-        background: var(--boot-card);
-        border: 1px solid var(--boot-card-border);
-        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.12);
-        backdrop-filter: blur(16px);
-      }
-
-      .boot-splash__brand {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-      }
-
-      .boot-splash__mark {
-        width: 64px;
-        height: 64px;
-        border-radius: 20px;
-        display: grid;
-        place-items: center;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        color: #fff7ef;
-        background:
-          radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.24), transparent 42%),
-          linear-gradient(145deg, #ef9961, #d87434);
-        box-shadow: 0 12px 24px rgba(216, 116, 52, 0.28);
-      }
-
-      .boot-splash__eyebrow {
-        margin: 0 0 6px;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--boot-accent);
-      }
-
-      .boot-splash__title {
-        margin: 0;
-        font-size: 24px;
-        line-height: 1.15;
-      }
-
-      .boot-splash__text {
-        margin: 8px 0 0;
-        color: var(--boot-muted);
-        line-height: 1.45;
-      }
-
-      .boot-splash__pulse {
-        margin-top: 22px;
-        display: flex;
-        gap: 10px;
-      }
-
-      .boot-splash__pulse span {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: var(--boot-accent);
-        opacity: 0.36;
-        animation: bootPulse 1.4s ease-in-out infinite;
-      }
-
-      .boot-splash__pulse span:nth-child(2) {
-        animation-delay: 0.18s;
-      }
-
-      .boot-splash__pulse span:nth-child(3) {
-        animation-delay: 0.36s;
-      }
-
-      .boot-splash__skeleton {
-        margin-top: 20px;
-        display: grid;
-        gap: 10px;
-      }
-
-      .boot-splash__line {
-        display: block;
+      .boot-splash__image,
+      .boot-splash__overlay {
+        position: absolute;
+        inset: 0;
         width: 100%;
-        height: 11px;
-        border-radius: 999px;
+        height: 100%;
+      }
+
+      .boot-splash__image {
+        object-fit: cover;
+        object-position: center center;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      .boot-splash__overlay {
         background:
-          linear-gradient(90deg, transparent 0%, var(--boot-sheen) 45%, transparent 100%),
-          rgba(127, 108, 93, 0.12);
-        background-size: 220px 100%, auto;
-        animation: bootSheen 1.8s linear infinite;
+          linear-gradient(180deg, rgba(11, 7, 4, 0.04) 0%, rgba(11, 7, 4, 0.18) 48%, rgba(11, 7, 4, 0.74) 100%),
+          linear-gradient(180deg, transparent 52%, rgba(11, 7, 4, 0.82) 100%);
       }
 
-      .boot-splash__line_wide {
-        width: 88%;
+      .boot-splash__footer {
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: center;
+        padding: 32px 20px calc(30px + env(safe-area-inset-bottom));
       }
 
-      .boot-splash__line_short {
-        width: 62%;
+      .boot-splash__loading {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        padding: 14px 20px;
+        border-radius: 999px;
+        background: rgba(19, 12, 8, 0.34);
+        color: #fff7f1;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
       }
 
-      @keyframes bootPulse {
+      .boot-splash__dots {
+        display: inline-flex;
+        min-width: 24px;
+      }
+
+      .boot-splash__dots span {
+        display: inline-block;
+        animation: bootDotFade 1.2s ease-in-out infinite;
+        opacity: 0.28;
+      }
+
+      .boot-splash__dots span:nth-child(2) {
+        animation-delay: 0.16s;
+      }
+
+      .boot-splash__dots span:nth-child(3) {
+        animation-delay: 0.32s;
+      }
+
+      @keyframes bootDotFade {
         0%,
         100% {
           transform: translateY(0);
-          opacity: 0.34;
+          opacity: 0.24;
         }
 
         50% {
-          transform: translateY(-4px);
-          opacity: 0.9;
-        }
-      }
-
-      @keyframes bootSheen {
-        from {
-          background-position: -240px 0, 0 0;
-        }
-
-        to {
-          background-position: 240px 0, 0 0;
+          transform: translateY(-1px);
+          opacity: 1;
         }
       }
     </style>
@@ -216,24 +124,16 @@
   <body>
     <div id="root">
       <div class="boot-splash" aria-hidden="true">
-        <section class="boot-splash__card">
-          <div class="boot-splash__brand">
-            <div class="boot-splash__mark">RS</div>
-            <div>
-              <p class="boot-splash__eyebrow">RustyShop</p>
-              <h1 class="boot-splash__title">Собираем уютную витрину</h1>
-              <p class="boot-splash__text">Товары и тексты уже подтягиваются.</p>
-            </div>
-          </div>
-          <div class="boot-splash__pulse">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div class="boot-splash__skeleton">
-            <span class="boot-splash__line boot-splash__line_wide"></span>
-            <span class="boot-splash__line"></span>
-            <span class="boot-splash__line boot-splash__line_short"></span>
+        <img class="boot-splash__image" src="./loadpage.png" alt="" />
+        <div class="boot-splash__overlay"></div>
+        <section class="boot-splash__footer">
+          <div class="boot-splash__loading" aria-label="Загрузка">
+            <span>Загрузка</span>
+            <span class="boot-splash__dots" aria-hidden>
+              <span>.</span>
+              <span>.</span>
+              <span>.</span>
+            </span>
           </div>
         </section>
       </div>
